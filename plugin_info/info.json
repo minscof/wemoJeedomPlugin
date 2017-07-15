@@ -1,0 +1,11 @@
+{
+    "id":"wemo",
+    "name":"Belkin WeMo",
+    "licence":"AGPL",
+    "author":"Thomas Martinez",
+    "installation":"Prérequis ouimeaux",
+    "require":"2.0",
+    "category":"automation protocol",
+    "hasOwnDeamon":"1",
+    "hasDependency":"1"
+}
