@@ -2,7 +2,7 @@ echo "********************************************************"
 echo "*             Mise à jour des dépendances              *"
 echo "********************************************************"
 sudo pip uninstall -y ouimeaux
-sudo pip install ouimeaux==0.7.9
+sudo pip install ouimeaux==0.8.0
 echo "********************************************************"
 echo "*             Mise à jour terminée                     *"
 echo "********************************************************"
