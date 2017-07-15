@@ -1,0 +1,34 @@
+{
+    "plugins/wemo/plugin_info/info.xml": {
+        "Plugin pour commander les éléments Belkin WeMo. Support de WeMo Switch, Light Switch, Insight Switch et Motion": "Plugin para controlar los elementos Belkin WeMo. Soporte de WeMo Switch, Light Switch, Insight Switch y Motion",
+        "Il faut installer les dépendances : \"wget http://127.0.0.1/jeedom/plugins/wemo/ressources/install.sh -v -O install.sh; ./install.sh\"": "Hay que instalar las dependencias: \"wget http://127.0.0.1/jeedom/plugins/wemo/ressources/install.sh -v -O install.sh; ./install.sh\""
+    },
+    "plugins/wemo/desktop/php/wemo.php": {
+        "Synchroniser équipements avec le Réseau": "Sincronizar mis dispositivos con la red ",
+        "Synchroniser": "Sincronizar",
+        "Arreter wemo": "Parar wemo",
+        "Rechercher": "Buscar",
+        "Général": "General",
+        "Nom de l'équipement wemo": "Nombre del dispositivo wemo",
+        "Objet parent": "Objeto padre",
+        "Aucun": "Ningún",
+        "Catégorie": "Categoría",
+        "Activer": "Activar",
+        "Visible": "Visible",
+        "Adresse IP": "Dirección IP",
+        "Modèle": "Modelo",
+        "N° de série": "N° de serie",
+        "Type": "Tipo",
+        "type": "tipo",
+        " Ajouter une command": "Añadir una orden",
+        "Nom": "Nombre",
+        "Parametre(s)": "Parámetro(s)",
+        "Supprimer": "Borrar",
+        "Sauvegarder": "Guardar",
+        "Démarrer wemo": "Iniciar wemo"
+    },
+    "plugins/wemo/desktop/js/wemo.js": {
+        "Parametres (JSON)": "Parámetros (JSON)",
+        "Tester": "Probar"
+    }
+}

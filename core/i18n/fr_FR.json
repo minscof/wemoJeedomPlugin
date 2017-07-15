@@ -1,0 +1,50 @@
+{
+    "plugins\/wemo\/plugin_info\/info.xml": {
+        "Plugin pour commander les éléments Belkin WeMo. Support de WeMo Switch, Light Switch, Insight Switch et Motion": "Plugin pour commander les éléments Belkin WeMo. Support de WeMo Switch, Light Switch, Insight Switch et Motion",
+        "Il faut installer les dépendances : \"wget http:\/\/127.0.0.1\/jeedom\/plugins\/wemo\/ressources\/install.sh -v -O install.sh; .\/install.sh\"": "Il faut installer les dépendances : \"wget http:\/\/127.0.0.1\/jeedom\/plugins\/wemo\/ressources\/install.sh -v -O install.sh; .\/install.sh\"",
+        "": ""
+    },
+    "plugins\/wemo\/desktop\/php\/wemo.php": {
+        "Synchroniser équipements avec le Réseau": "Synchroniser équipements avec le Réseau",
+        "Synchroniser": "Synchroniser",
+        "Arreter wemo": "Arreter wemo",
+        "Rechercher": "Rechercher",
+        "Général": "Général",
+        "Nom de l'équipement wemo": "Nom de l'équipement wemo",
+        "Objet parent": "Objet parent",
+        "Aucun": "Aucun",
+        "Catégorie": "Catégorie",
+        "Activer": "Activer",
+        "Visible": "Visible",
+        "Adresse IP": "Adresse IP",
+        "Modèle": "Modèle",
+        "N° de série": "N° de série",
+        "Type": "Type",
+        "type": "type",
+        " Ajouter une command": " Ajouter une command",
+        "Nom": "Nom",
+        "Parametre(s)": "Parametre(s)",
+        "Supprimer": "Supprimer",
+        "Sauvegarder": "Sauvegarder",
+        "Démarrer wemo": "Démarrer wemo",
+        "Mes GoogleTTS": "Mes GoogleTTS",
+        "Mes Wemos": "Mes Wemos",
+        "Gestion": "Gestion",
+        "Configuration": "Configuration",
+        " Ajouter une commande": " Ajouter une commande"
+    },
+    "plugins\/wemo\/desktop\/js\/wemo.js": {
+        "Parametres (JSON)": "Parametres (JSON)",
+        "Tester": "Tester"
+    },
+    "plugins\/wemo\/plugin_info\/configuration.php": {
+        "Installation des dépendances": "Installation des dépendances",
+        "Installer\/Mettre à jour le serveur zway": "Installer\/Mettre à jour le serveur zway",
+        "Lancer": "Lancer",
+        "Etes-vous sûr de vouloir installer\/mettre à jour les dépendances ? ": "Etes-vous sûr de vouloir installer\/mettre à jour les dépendances ? ",
+        "Installation \/ Mise à jour": "Installation \/ Mise à jour",
+        "Installer\/Mettre à jour les dépendances": "Installer\/Mettre à jour les dépendances",
+        "Installation automatique impossible": "Installation automatique impossible",
+        "Veuillez lancer la commande suivante :": "Veuillez lancer la commande suivante :"
+    }
+}
