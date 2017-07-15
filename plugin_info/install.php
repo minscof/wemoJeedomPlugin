@@ -16,11 +16,23 @@
  * along with Jeedom. If not, see <http://www.gnu.org/licenses/>.
  */
 
+function wemo_install() {
+    exec('sudo apt-get install python-pip libevent-dev python-all-dev ');
+    exec('sudo apt-get install ouimeaux';
+    exec('sudo apt-get remove python-pip libevent-dev python-all-dev ');
+}
 
 function wemo_update() {
     foreach (eqLogic::byType('wemo') as $wemo) {
         $wemo->save();
     }
 }
+
+function wemo_install() {
+    exec('sudo apt-get install python-pip libevent-dev python-all-dev ');
+    exec('sudo apt-get uninstall ouimeaux';
+    exec('sudo apt-get remove python-pip libevent-dev python-all-dev ');
+}
+
 
 ?>

@@ -3,7 +3,7 @@
     "name":"Belkin WeMo",
     "licence":"AGPL",
     "author":"Thomas Martinez",
-    "installation":"Prérequis ouimeaux",
+    "installation":"Prérequis ouimeaux 0.8.0",
     "require":"2.0",
     "category":"automation protocol",
     "hasOwnDeamon":"1",

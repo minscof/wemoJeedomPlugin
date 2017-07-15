@@ -8,7 +8,7 @@ import subprocess
 
 from ouimeaux.discovery import UPnPLoopbackException
 from ouimeaux.environment import Environment
-from ouimeaux.config import get_cache, in_home, WemoConfiguration
+from ouimeaux.config import in_home, WemoConfiguration
 from ouimeaux.utils import matcher
 
 reqlog = logging.getLogger("requests.packages.urllib3.connectionpool")
