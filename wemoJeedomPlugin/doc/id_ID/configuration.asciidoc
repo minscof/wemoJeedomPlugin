@@ -1,8 +1,0 @@
-. Installation des dépendances :
-Avant de pouvoir utiliser vos équipements WeMo dans Jeedom, vous devez installer les dépendances :
-Vous devez utiliser le bouton dédié dans la configuration du plugin qui lancera l'installation automatique.
-	
-. Configuration du plugin :
-Le plugin détecte les équipements et créé automatiquement les devices en cliquant sur l'icone "Synchroniser" :
-
-image:../images/wemo1.png[]
