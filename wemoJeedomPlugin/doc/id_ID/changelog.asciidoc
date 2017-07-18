@@ -1,6 +1,0 @@
-* V1.5 : Mise en conformité avec la Jeedom V2
-* V1.4 : Ajout bouton d'installation pour les dépendances
-* V1.3 : Correction bug
-* V1.2 : Correction
-* V1.1 : Ajout de la doc
-* V1.0 : Première Release
