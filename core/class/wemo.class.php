@@ -25,7 +25,25 @@ class wemo extends eqLogic {
 	private static $_wemoUpdatetime = array();
 
     /*     * ***********************Methode static*************************** */
-		public static function dependancy_info() {
+	public static function health()	{
+	    $return = array();
+	    $statusDeamon = false;
+	    $statusDeamon = (wemo::deamon_info()['state']=='ok'?true:false);
+	    $libVer = config::byKey('DeamonVer', 'wemo');
+	    if ($libVer == '') {
+	        $libVer = '{{inconnue}}';
+	    }
+	    
+	    $return[] = array(
+	        'test' => __('Deamon', __FILE__),
+	        'result' => ($statusDeamon) ? $libVer : __('NOK', __FILE__),
+	        'advice' => ($statusDeamon) ? '' : __('Indique si la Deamon est opérationel avec sa version', __FILE__),
+	        'state' => $statusDeamon
+	    );
+	    return $return;
+	}
+	
+	public static function dependancy_info() {
 		$return = array();
 		$return['log'] = 'wemo_update';
 		$return['progress_file'] = '/tmp/dependancy_wemo_in_progress';
@@ -39,9 +57,9 @@ class wemo extends eqLogic {
 	public static function dependancy_install() {
 		log::remove('wemo_update');
 		if (exec('sudo pip list |grep ouimeaux')<>""){
-			$cmd = 'sudo /bin/bash ' . dirname(__FILE__) . '/../../ressources/upgrade.sh';
+			$cmd = 'sudo /bin/bash ' . dirname(__FILE__) . '/../../resources/upgrade.sh';
 		}else{
-			$cmd = 'sudo /bin/bash ' . dirname(__FILE__) . '/../../ressources/install.sh';	
+			$cmd = 'sudo /bin/bash ' . dirname(__FILE__) . '/../../resources/install.sh';	
 		}
 		$cmd .= ' >> ' . log::getPathToLog('wemo_update') . ' 2>&1 &';
 		exec($cmd);
@@ -59,15 +77,18 @@ class wemo extends eqLogic {
 	}
 	public static function deamon_start($_debug = false) {
 		self::deamon_stop();
+		$shell = realpath(dirname(__FILE__)).'/../../resources/wemo_server.py';
+		$string = file_get_contents($shell);
+		preg_match("/__version__='([0-9.]+)/mis", $string, $matches);
+		config::save('DeamonVer', 'Version '.$matches[1],  'wemo');
 		$deamon_info = self::deamon_info();
 		if ($deamon_info['launchable'] != 'ok') {
 			throw new Exception(__('Veuillez vérifier la configuration', __FILE__));
 		}
 		log::remove('wemo');
-		$wemo_path = realpath(dirname(__FILE__) . '/../../ressources');
-        $cmd = '/usr/bin/python ' . $wemo_path . '/wemo_server.py ';
-        log::add('wemo', 'info', 'Lancement démon wemo : ' . $cmd);
-        $result = exec($cmd . ' >> ' . log::getPathToLog('wemo') . ' 2>&1 &');
+		
+        log::add('wemo', 'info', 'Lancement démon wemo : ' . $shell);
+        $result = exec($shell . ' >> ' . log::getPathToLog('wemo') . ' 2>&1 &');
         if (strpos(strtolower($result), 'error') !== false || strpos(strtolower($result), 'traceback') !== false) {
             log::add('wemo', 'error', $result);
             return false;
@@ -86,7 +107,7 @@ class wemo extends eqLogic {
 			return false;
 		}
         message::removeAll('wemo', 'unableStartDeamon');
-        log::add('wemo', 'info', 'Démon wemo lancé');
+        log::add('wemo', 'info', 'Démon wemo lancé '.matches[1]);
 		return true;
 	}
 
@@ -241,26 +262,28 @@ class wemoCmd extends cmd {
     }
 
     public function execute($_options = null) {
-    	log::add('wemo', 'info', 'Debut de l action');	
-		$wemo=$this->getEqLogic();
+    	$wemo=$this->getEqLogic();
 		if ($this->type == 'action') {
-		$pest = new Pest('127.0.0.1:5000');
-		try {
-			$url='/api/device/'.rawurlencode($wemo->getConfiguration('name')).'?state='.$this->getConfiguration('request');
-			log::add('wemo', 'info', 'url'.$url);
-		    $request = $pest->post($url);
-			return TRUE;
-		} catch (Pest_NotFound $e) {
-		    // 404
-		    echo $e->getMessage();
-  			echo "\n";
-		}
+    		$pest = new Pest('127.0.0.1:5000');
+    		try {
+    			$url='/api/device/'.rawurlencode($wemo->getConfiguration('name')).'?state='.$this->getConfiguration('request');
+    			//log::add('wemo', 'info', 'url='.$url);
+    		    $request = $pest->post($url);
+    		    log::add('wemo', 'info', 'Action '.$url.' ok');
+    			return TRUE;
+    		} catch (Pest_NotFound $e) {
+    		    // 404
+    		    log::add('wemo', 'warn', 'device='.$wemo->getConfiguration('name').' not found !');
+    		    message::add('wemo', 'device not found');
+    		    echo $e->getMessage();
+      			echo "\n";
+      			return false;
+    		}
 		}else{
 			//return true;	
 			return $this->getValue();
 		}
-        
-        
+                
         return $response;
     
 

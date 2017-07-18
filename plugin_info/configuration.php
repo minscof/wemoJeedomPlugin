@@ -34,7 +34,7 @@ if (!isConnect('admin')) {
 	    <div class="form-group">
 	        <label class="col-lg-4 control-label">{{Installation automatique impossible}}</label>
 	        <div class="col-lg-8">
-	            {{Veuillez lancer la commande suivante :}} wget http://127.0.0.1/jeedom/plugins/wemo/ressources/install.sh -v -O install.sh; ./install.sh
+	            {{Veuillez lancer la commande suivante :}} wget http://127.0.0.1/jeedom/plugins/wemo/resources/install.sh -v -O install.sh; ./install.sh
 	        </div>
 	    </div>
 	    <?php }?>

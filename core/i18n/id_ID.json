@@ -1,7 +1,7 @@
 {
     "plugins/wemo/plugin_info/info.xml": {
         "Plugin pour commander les éléments Belkin WeMo. Support de WeMo Switch, Light Switch, Insight Switch et Motion": "Plugin pour commander les éléments Belkin WeMo. Support de WeMo Switch, Light Switch, Insight Switch et Motion",
-        "Il faut installer les dépendances : \"wget http://127.0.0.1/jeedom/plugins/wemo/ressources/install.sh -v -O install.sh; ./install.sh\"": "Il faut installer les dépendances : \"wget http://127.0.0.1/jeedom/plugins/wemo/ressources/install.sh -v -O install.sh; ./install.sh\""
+        "Il faut installer les dépendances : \"wget http://127.0.0.1/jeedom/plugins/wemo/resources/install.sh -v -O install.sh; ./install.sh\"": "Il faut installer les dépendances : \"wget http://127.0.0.1/jeedom/plugins/wemo/resources/install.sh -v -O install.sh; ./install.sh\""
     },
     "plugins/wemo/desktop/php/wemo.php": {
         "Synchroniser équipements avec le Réseau": "Synchroniser équipements avec le Réseau",
