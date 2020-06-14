@@ -15,7 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with Jeedom. If not, see <http://www.gnu.org/licenses/>.
  */
-
+error_log('debug jeeWemo.php',0);
 if (php_sapi_name() != 'cli' || isset($_SERVER['REQUEST_METHOD']) || !isset($_SERVER['argc'])) {
     header("Status: 404 Not Found");
     header('HTTP/1.0 404 Not Found');
@@ -24,7 +24,7 @@ if (php_sapi_name() != 'cli' || isset($_SERVER['REQUEST_METHOD']) || !isset($_SE
     echo "The page that you have requested could not be found.";
     exit();
 }
-
+error_log('debug jeeWemo.php bis',0);
 require_once dirname(__FILE__) . "/../../../../core/php/core.inc.php";
 
 if (isset($argv)) {
@@ -41,17 +41,15 @@ foreach ($_GET as $key => $value) {
 }
 log::add('wemo', 'event', 'Evenement : ' . $message);
 //log::add('wemo', 'event', 'tableau 2: ' . json_encode($values_arr));
-$wemo_all = eqLogic::byTypeAndSearhConfiguration('wemo',$_GET['serialnumber']);
-if(count($wemo_all) == 0){
-	log::add('wemo', 'info', 'impossible de trouver le device', 'config');
-	return;
+$wemo_all = eqLogic::byTypeAndSearhConfiguration('wemo', $_GET['serialnumber']);
+if (count($wemo_all) == 0) {
+    log::add('wemo', 'info', 'impossible de trouver le device', 'config');
+    return;
 }
 foreach ($wemo_all as $wemo) {
-foreach ($wemo->getCmd('info') as $cmd) {
-		$cmd->event($_GET['state']);
-		$cmd->setValue($_GET['state']);
-		$cmd->save();
-}}
-
-
-
+    foreach ($wemo->getCmd('info') as $cmd) {
+        $cmd->event($_GET['state']);
+        $cmd->setValue($_GET['state']);
+        $cmd->save();
+    }
+}
