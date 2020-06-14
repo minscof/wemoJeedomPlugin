@@ -125,13 +125,13 @@ if (!$deamonRunning) {
                 <div class="form-group">
                     <label class="col-lg-2 control-label">{{N° de série}}</label>
                     <div class="col-lg-3">
-                        <input type="text" id="serialnumber" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="serialnumber" placeholder="{{N° de série}}" disabled/>
+                        <input type="text" id="serialNumber" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="serialNumber" placeholder="{{N° de série}}" disabled/>
                     </div>
                 </div>
                 <div class="form-group">
                     <label class="col-lg-2 control-label">{{Type}}</label>
                     <div class="col-lg-3">
-                        <input type="text" id="type" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="type" placeholder="{{type}}" disabled/>
+                        <input type="text" id="type" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="type" placeholder="{{model_name}}" disabled/>
                     </div>
                 </div>
                 

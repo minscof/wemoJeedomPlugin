@@ -168,9 +168,9 @@ class wemo extends eqLogic {
 		
 		foreach($devices as $device) {
 			log::add('wemo', 'debug', '___________________________');
-            log::add('wemo', 'debug', '|Equipement trouvé : ' . $device['serialnumber']);
+            log::add('wemo', 'debug', '|Equipement trouvé : ' . $device->serialnumber);
             log::add('wemo', 'debug', '|__________________________');
-            self::saveEquipment($device['name'], $device['host'], $device['serialnumber'], $device['model'], $device['model_name'], $device['state']);
+            self::saveEquipment($device->name, $device->host, $device->serialnumber, $device->model, $device->model_name, $device->state);
         }
 	}
 	

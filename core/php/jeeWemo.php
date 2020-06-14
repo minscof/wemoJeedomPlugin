@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU General Public License
  * along with Jeedom. If not, see <http://www.gnu.org/licenses/>.
  */
-error_log('debug jeeWemo.php',0);
 if (php_sapi_name() != 'cli' || isset($_SERVER['REQUEST_METHOD']) || !isset($_SERVER['argc'])) {
     header("Status: 404 Not Found");
     header('HTTP/1.0 404 Not Found');
@@ -24,7 +23,6 @@ if (php_sapi_name() != 'cli' || isset($_SERVER['REQUEST_METHOD']) || !isset($_SE
     echo "The page that you have requested could not be found.";
     exit();
 }
-error_log('debug jeeWemo.php bis',0);
 require_once dirname(__FILE__) . "/../../../../core/php/core.inc.php";
 
 if (isset($argv)) {
