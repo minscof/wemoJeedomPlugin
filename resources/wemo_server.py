@@ -135,7 +135,7 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
                 model = device.model
                 logger.info("model = %s", model)
                 result = json.dumps({'name': name, 'host': host, 'serialnumber': serialnumber, 'model_name': model_name, 'model': model, 'state': state})
-                result = '['+result=']'
+                result = '['+result+']'
                 
             
             # data = '{"1":{"vendor":'+str(equipments[0][0])+'},"2":{"vendor":'+str(equipments[1][0])+'}}'
