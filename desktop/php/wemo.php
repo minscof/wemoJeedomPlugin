@@ -3,16 +3,15 @@ if (!isConnect('admin')) {
     throw new Exception('{{401 - Accès non autorisé}}');
 }
 
-//include_file('core', 'wemo', 'config', 'wemo');
 $eqLogics=eqLogic::byType('wemo');
 sendVarToJS('eqType', 'wemo');
 
 $deamonRunning = false;
 
-    $deamonRunning = wemo::deamonRunning();
-    if (!$deamonRunning) {
-        echo '<div class="alert alert-danger">Le démon wemo ne tourne pas</div>';
-    }
+$deamonRunning = wemo::deamonRunning();
+if (!$deamonRunning) {
+    echo '<div class="alert alert-danger">Le démon wemo ne tourne pas</div>';
+}
 
 ?>
 
@@ -84,7 +83,7 @@ $deamonRunning = false;
                         <select id="sel_object" class="eqLogicAttr form-control" data-l1key="object_id">
                             <option value="">{{Aucun}}</option>
                             <?php
-                            foreach (object::all() as $object) {
+                            foreach (jeeObject::all() as $object) {
                                 echo '<option value="' . $object->getId() . '">' . $object->getName() . '</option>';
                             }
                             ?>
@@ -139,14 +138,15 @@ $deamonRunning = false;
             </fieldset> 
         </form>
 
-        <legend>Commandes</legend>
+        <legend>{{Tableau des commandes}}</legend>
         <a class="btn btn-success btn-sm cmdAction" data-action="add"><i class="fa fa-plus-circle"></i>{{ Ajouter une commande}}</a><br/><br/>
         <table id="table_cmd" class="table table-bordered table-condensed">
             <thead>
                 <tr>
-                    <th style="width: 200px;">{{Nom}}</th>
-                    <th style="width: 100px;">{{Type}}</th>
-                    <th>{{Parametre(s)}}</th>
+                    <th style="width: 40px;">#</th>
+                    <th style="width: 190px;">{{Nom}}</th>
+                    <th style="width: 130px;">{{Type}}</th>
+                    <th style="width: 150px;">{{Paramètres}}</th>
                     <th style="width: 100px;"></th>
                 </tr>
             </thead>

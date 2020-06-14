@@ -149,82 +149,104 @@ class wemo extends eqLogic {
     }
     
     public static function searchWemoDevices() {
-	$pest = new Pest('127.0.0.1:5000');
-		try {
-		    $request = $pest->get('/api/environment');
-			$devices = json_decode($request,true);
-			foreach($devices as $device) {
-				$eqLogics = eqLogic::byTypeAndSearhConfiguration('wemo',$device['serialnumber']);
-			if(count($eqLogics) == 0){
-				log::add('wemo', 'info', 'nouvel equipement, création', 'config');
-				$eqLogic = new eqLogic();
-	            $eqLogic->setEqType_name('wemo');
-	            $eqLogic->setIsEnable(1);
-	            $eqLogic->setName($device['name']);
-	            $eqLogic->setConfiguration('name',$device['name']);
-	            $eqLogic->setConfiguration('host',$device['host']);
-				$eqLogic->setConfiguration('model',$device['model']);
-				$eqLogic->setConfiguration('serialnumber',$device['serialnumber']);
-	            $eqLogic->setConfiguration('type',$device['type']);
-				$eqLogic->setIsVisible(1);
-	            $eqLogic->save();
-	            $eqLogic = self::byId($eqLogic->getId());
-	            $include_device = $eqLogic->getId();
-				
-				if($device['type']=="Switch" || $device['type']=="Insight" || $device['type']=="Lightswitch"){
-					$wemoCmd = new wemoCmd();
-			        $wemoCmd->setName(__('Etat', __FILE__));
-			        $wemoCmd->setEqLogic_id($include_device);
-			        $wemoCmd->setConfiguration('request', 'state');
-			        $wemoCmd->setType('info');
-			        $wemoCmd->setSubType('binary');
-			        $wemoCmd->setDisplay('generic_type','ENERGY_STATE');
-			        $wemoCmd->save();
-					
-					$wemoCmd = new wemoCmd();
-			        $wemoCmd->setName(__('On', __FILE__));
-			        $wemoCmd->setEqLogic_id($include_device);
-			        $wemoCmd->setConfiguration('request', 'on');
-			        $wemoCmd->setType('action');
-			        $wemoCmd->setSubType('other');
-			        $wemoCmd->setDisplay('generic_type','ENERGY_ON');
-			        $wemoCmd->save();
-					
-					$wemoCmd = new wemoCmd();
-			        $wemoCmd->setName(__('Off', __FILE__));
-			        $wemoCmd->setEqLogic_id($include_device);
-			        $wemoCmd->setConfiguration('request', 'off');
-			        $wemoCmd->setType('action');
-			        $wemoCmd->setSubType('other');
-			        $wemoCmd->setDisplay('generic_type','OFF');
-			        $wemoCmd->save();
-					
-					$wemoCmd = new wemoCmd();
-			        $wemoCmd->setName(__('Clignote', __FILE__));
-			        $wemoCmd->setEqLogic_id($include_device);
-			        $wemoCmd->setConfiguration('request', 'blink');
-			        $wemoCmd->setType('action');
-			        $wemoCmd->setSubType('other');
-			        $wemoCmd->save();	
-					
-				}elseif($device['type']=="Motion"){
-					$wemoCmd = new wemoCmd();
-			        $wemoCmd->setName(__('Etat', __FILE__));
-			        $wemoCmd->setEqLogic_id($include_device);
-			        $wemoCmd->setConfiguration('request', 'state');
-			        $wemoCmd->setType('info');
-			        $wemoCmd->setSubType('binary');
-			        $wemoCmd->save();
-				}
-				
-			}
-			}
-		} catch (Pest_NotFound $e) {
-		    // 404
-		    echo $e->getMessage();
-  			echo "\n";
-		}
-        
+
+		log::add('wemo', 'info', '******** Début de la recherche d\'équipements ********');
+        if (self::deamon_info()['state'] == 'nok')
+            return "Il faut démarrer le serveur pour pouvoir lancer une détection.";
+        $opts = array(
+            'http' => array(
+                'method' => "GET",
+                'header' => "Accept-language: en\r\n" . "Cookie: foo=bar\r\n"
+            )
+        );
+        $context = stream_context_create($opts);
+        if (! $file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', '0') . ':' . config::byKey('wemoPort', 'wemo', '0') . '/scan', false, $context)) {
+            return "Problème de détection : pas de réponse du serveur - vérifier que votre serveur est bien démarré ou regarder ses logs";
+        }
+        $devices = json_decode($file);
+        $count = 0;
+		
+		foreach($devices as $device) {
+			log::add('wemo', 'debug', '___________________________');
+            log::add('wemo', 'debug', '|Equipement trouvé : ' . $device['serialnumber']);
+            log::add('wemo', 'debug', '|__________________________');
+            self::saveEquipment($device['name'], $device['host'], $device['serialnumber'], $device['model'], $device['type'], $device['state']);
+        }
+	}
+	
+	public static function saveEquipment($name, $host, $serialNumber, $model, $type, $status)
+    {
+        log::add('wemo', 'debug', '  Début saveEquipment =' . $host);
+        $name = init('name', $name);
+        $host = init('host', $host);
+        $serialNumber = init('serialNumber', $serialNumber);
+        $model = init('model', $model);
+        $type = init('type', $type);
+        // $id = $model.'-'.$name.'-'.$host.'-'.$serialNumber.'-'.$type;
+        $id = $serialNumber;
+        //log::add('wemo', 'debug', '  Adresse logique de l\'équipement détecté : ' . $id);
+        $elogic = self::byLogicalId($id, 'wemo');
+        if (is_object($elogic)) {
+            log::add('wemo', 'debug', '  Equipement déjà existant - mise à jour des informations de l\'équipement détecté : ' . $id);
+            $save = false;
+            if ($elogic->getConfiguration('name', '') != $name) {
+                $elogic->setConfiguration('name', $name);
+                $save = true;
+            }
+            if ($elogic->getConfiguration('host', '') != $host) {
+                $elogic->setConfiguration('host', $host);
+                $save = true;
+            }
+            if ($elogic->getConfiguration('serialNumber', '') != $serialNumber) {
+                $elogic->setConfiguration('serialNumber', $serialNumber);
+                $save = true;
+            }
+            if ($elogic->getConfiguration('model', '') != $model) {
+                $elogic->setConfiguration('model', $model);
+                $save = true;
+            }
+            if ($elogic->getConfiguration('type', '') != $type) {
+                $elogic->setConfiguration('type', $type);
+                $save = true;
+            }
+            $statusCmd = $elogic->getCmd(null, 'status');
+            log::add('wemo', 'debug', '  Valeur du status de l\'équipement existant :' . $statusCmd->getValue() . ' - status=' . $status);
+            if ($statusCmd->getValue() != $value = self::convertStatus($status)) {
+                log::add('wemo', 'debug', '  Mise à jour du status de l\'équipement existant :' . self::convertStatus($status) . ' au lieu de ' . $statusCmd->getValue());
+                $statusCmd->setValue(self::convertStatus($status));
+                $statusCmd->save();
+            }
+            if ($save) {
+                // log::add('wemo', 'debug', 'Avant mise à jour d\'un équipement existant :' . $elogic->getName());
+                $elogic->save();
+                log::add('wemo', 'debug', '  Mise à jour d\'un équipement existant terminée :' . $elogic->getName());
+            } else {
+                log::add('wemo', 'debug', '  Aucune mise à jour à apporter à cet équipement existant :' . $elogic->getName());
+            }
+        } else {
+            log::add('wemo', 'debug', '  Nouvel Equipement : ' . $id);
+            $equipment = new wemo();
+            $equipment->setEqType_name('wemo');
+            $equipment->setLogicalId($id);
+            $equipment->setConfiguration('name', $name);
+            $equipment->setConfiguration('host', $host);
+            $equipment->setConfiguration('serialNumber', $serialNumber);
+            $equipment->setConfiguration('model', $model);
+            $equipment->setConfiguration('type', $type);
+            $name = $model . ' - ' . $name;
+            $newName = $name;
+            log::add('wemo', 'debug', '  Choix a priori du nom de cet équipement :' . $name);
+            $i = 1;
+            while (self::byObjectNameEqLogicName(__('Aucun', __FILE__), $newName)) {
+                $newName = $name . ' - ' . $i ++;
+            }
+            $equipment->setName($newName);
+            log::add('wemo', 'debug', '  Choix du nom de cet équipement :' . $newName);
+            $equipment->setIsEnable(true);
+            $equipment->setIsVisible(true);
+            $equipment->save();
+            log::add('wemo', 'debug', '  Ajout terminé d\'un nouvel équipement :' . $equipment->getName() . ' - LogicalId=' . $id);
+        }
     }
 
     public static function deamonRunning() {
@@ -240,10 +262,6 @@ class wemo extends eqLogic {
 
     /*     * *********************Methode d'instance************************* */
     
-	
-	
-
-
 }
 
 class wemoCmd extends cmd {
@@ -259,7 +277,61 @@ class wemoCmd extends cmd {
         if ($this->getConfiguration('request') == '') {
             //throw new Exception(__('La requete ne peut etre vide',__FILE__));
         }
-    }
+	}
+	
+
+
+	/* fonction appelée après la fin de la séquence de sauvegarde */
+	public function postSave()
+	{
+		if (in_array($this->getConfiguration('type'), array('Switch','Insight','Lightswitch'))) {
+			$wemoCmd = new wemoCmd();
+			$wemoCmd->setName(__('Etat', __FILE__));
+			$wemoCmd->setEqLogic_id($include_device);
+			$wemoCmd->setConfiguration('request', 'state');
+			$wemoCmd->setType('info');
+			$wemoCmd->setSubType('binary');
+			$wemoCmd->setDisplay('generic_type','ENERGY_STATE');
+			$wemoCmd->save();
+			
+			$wemoCmd = new wemoCmd();
+			$wemoCmd->setName(__('On', __FILE__));
+			$wemoCmd->setEqLogic_id($include_device);
+			$wemoCmd->setConfiguration('request', 'on');
+			$wemoCmd->setType('action');
+			$wemoCmd->setSubType('other');
+			$wemoCmd->setDisplay('generic_type','ENERGY_ON');
+			$wemoCmd->save();
+			
+			$wemoCmd = new wemoCmd();
+			$wemoCmd->setName(__('Off', __FILE__));
+			$wemoCmd->setEqLogic_id($include_device);
+			$wemoCmd->setConfiguration('request', 'off');
+			$wemoCmd->setType('action');
+			$wemoCmd->setSubType('other');
+			$wemoCmd->setDisplay('generic_type','OFF');
+			$wemoCmd->save();
+			
+			$wemoCmd = new wemoCmd();
+			$wemoCmd->setName(__('Clignote', __FILE__));
+			$wemoCmd->setEqLogic_id($include_device);
+			$wemoCmd->setConfiguration('request', 'blink');
+			$wemoCmd->setType('action');
+			$wemoCmd->setSubType('other');
+			$wemoCmd->save();	
+			
+		}elseif(in_array($this->getConfiguration('type'), array('Motion'))){
+			$wemoCmd = new wemoCmd();
+			$wemoCmd->setName(__('Etat', __FILE__));
+			$wemoCmd->setEqLogic_id($include_device);
+			$wemoCmd->setConfiguration('request', 'state');
+			$wemoCmd->setType('info');
+			$wemoCmd->setSubType('binary');
+			$wemoCmd->save();
+		}
+	}
+}
+
 
     public function execute($_options = null) {
     	$wemo=$this->getEqLogic();
