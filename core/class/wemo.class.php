@@ -160,7 +160,7 @@ class wemo extends eqLogic {
             )
         );
         $context = stream_context_create($opts);
-        if (! $file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', '0') . ':' . config::byKey('wemoPort', 'wemo', '0') . '/scan', false, $context)) {
+        if (! $file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', 'localhost') . ':' . config::byKey('wemoPort', 'wemo', '5000') . '/scan', false, $context)) {
             return "Problème de détection : pas de réponse du serveur - vérifier que votre serveur est bien démarré ou regarder ses logs";
         }
         $devices = json_decode($file);
@@ -170,19 +170,19 @@ class wemo extends eqLogic {
 			log::add('wemo', 'debug', '___________________________');
             log::add('wemo', 'debug', '|Equipement trouvé : ' . $device['serialnumber']);
             log::add('wemo', 'debug', '|__________________________');
-            self::saveEquipment($device['name'], $device['host'], $device['serialnumber'], $device['model'], $device['type'], $device['state']);
+            self::saveEquipment($device['name'], $device['host'], $device['serialnumber'], $device['model'], $device['model_name'], $device['state']);
         }
 	}
 	
-	public static function saveEquipment($name, $host, $serialNumber, $model, $type, $status)
+	public static function saveEquipment($name, $host, $serialNumber, $model, $model_name, $status)
     {
         log::add('wemo', 'debug', '  Début saveEquipment =' . $host);
         $name = init('name', $name);
         $host = init('host', $host);
         $serialNumber = init('serialNumber', $serialNumber);
         $model = init('model', $model);
-        $type = init('type', $type);
-        // $id = $model.'-'.$name.'-'.$host.'-'.$serialNumber.'-'.$type;
+        $type = init('model_name', $model_name);
+        // $id = $model.'-'.$name.'-'.$host.'-'.$serialNumber.'-'.$model_name;
         $id = $serialNumber;
         //log::add('wemo', 'debug', '  Adresse logique de l\'équipement détecté : ' . $id);
         $elogic = self::byLogicalId($id, 'wemo');
@@ -205,8 +205,8 @@ class wemo extends eqLogic {
                 $elogic->setConfiguration('model', $model);
                 $save = true;
             }
-            if ($elogic->getConfiguration('type', '') != $type) {
-                $elogic->setConfiguration('type', $type);
+            if ($elogic->getConfiguration('model_name', '') != $model_name) {
+                $elogic->setConfiguration('model_name', $model_name);
                 $save = true;
             }
             $statusCmd = $elogic->getCmd(null, 'status');
@@ -232,7 +232,7 @@ class wemo extends eqLogic {
             $equipment->setConfiguration('host', $host);
             $equipment->setConfiguration('serialNumber', $serialNumber);
             $equipment->setConfiguration('model', $model);
-            $equipment->setConfiguration('type', $type);
+            $equipment->setConfiguration('model_name', $model_name);
             $name = $model . ' - ' . $name;
             $newName = $name;
             log::add('wemo', 'debug', '  Choix a priori du nom de cet équipement :' . $name);
@@ -284,10 +284,10 @@ class wemoCmd extends cmd {
 	/* fonction appelée après la fin de la séquence de sauvegarde */
 	public function postSave()
 	{
-		if (in_array($this->getConfiguration('type'), array('Switch','Insight','Lightswitch'))) {
+		if (in_array($this->getConfiguration('model_name'), array('Switch','Insight','Lightswitch'))) {
 			$wemoCmd = new wemoCmd();
 			$wemoCmd->setName(__('Etat', __FILE__));
-			$wemoCmd->setEqLogic_id($include_device);
+			$wemoCmd->setEqLogic_id($this->getId());
 			$wemoCmd->setConfiguration('request', 'state');
 			$wemoCmd->setType('info');
 			$wemoCmd->setSubType('binary');
@@ -296,7 +296,7 @@ class wemoCmd extends cmd {
 			
 			$wemoCmd = new wemoCmd();
 			$wemoCmd->setName(__('On', __FILE__));
-			$wemoCmd->setEqLogic_id($include_device);
+			$wemoCmd->setEqLogic_id($this->getId());
 			$wemoCmd->setConfiguration('request', 'on');
 			$wemoCmd->setType('action');
 			$wemoCmd->setSubType('other');
@@ -305,7 +305,7 @@ class wemoCmd extends cmd {
 			
 			$wemoCmd = new wemoCmd();
 			$wemoCmd->setName(__('Off', __FILE__));
-			$wemoCmd->setEqLogic_id($include_device);
+			$wemoCmd->setEqLogic_id($this->getId());
 			$wemoCmd->setConfiguration('request', 'off');
 			$wemoCmd->setType('action');
 			$wemoCmd->setSubType('other');
@@ -314,23 +314,23 @@ class wemoCmd extends cmd {
 			
 			$wemoCmd = new wemoCmd();
 			$wemoCmd->setName(__('Clignote', __FILE__));
-			$wemoCmd->setEqLogic_id($include_device);
+			$wemoCmd->setEqLogic_id($this->getId());
 			$wemoCmd->setConfiguration('request', 'blink');
 			$wemoCmd->setType('action');
 			$wemoCmd->setSubType('other');
 			$wemoCmd->save();	
 			
-		}elseif(in_array($this->getConfiguration('type'), array('Motion'))){
+		}elseif(in_array($this->getConfiguration('model_name'), array('Motion'))){
 			$wemoCmd = new wemoCmd();
 			$wemoCmd->setName(__('Etat', __FILE__));
-			$wemoCmd->setEqLogic_id($include_device);
+			$wemoCmd->setEqLogic_id($this->getId());
 			$wemoCmd->setConfiguration('request', 'state');
 			$wemoCmd->setType('info');
 			$wemoCmd->setSubType('binary');
 			$wemoCmd->save();
 		}
 	}
-}
+
 
 
     public function execute($_options = null) {
@@ -357,9 +357,9 @@ class wemoCmd extends cmd {
 		}
                 
         return $response;
-    
+	}
 
     /*     * **********************Getteur Setteur*************************** */
 }
-}
+
 ?>

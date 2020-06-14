@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os
 import sys
@@ -8,6 +8,7 @@ import subprocess
 import json
 
 import pywemo
+import urllib.request, urllib.error, urllib.parse
 
 __version__='0.91'
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)-15s - %(name)s: %(message)s')
@@ -74,8 +75,7 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         self.logger.debug('start handle()')
-        global eqScanned, eqInfo, server
-
+        
         data = str(self.request.recv(1024), "utf-8").split('\n')[0]
         
         lst = data.split()
@@ -130,19 +130,19 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
                 logger.info("name = %s", name)
                 host = device.host
                 logger.info("host = %s", host)
-                type = device.type
-                logger.info("type = %s", type)
+                model_name = device.model_name
+                logger.info("type = %s", model_name)
                 model = device.model
                 logger.info("model = %s", nmodel)
-                data = json.dump({'name': name, 'host': host, 'serialNumber': serialNumber, 'type': type, 'model': model, 'state': state})
+                result = json.dump({'name': name, 'host': host, 'serialNumber': serialNumber, 'model_name': model_name, 'model': model, 'state': state})
                 
             
             # data = '{"1":{"vendor":'+str(equipments[0][0])+'},"2":{"vendor":'+str(equipments[1][0])+'}}'
             #print("DEBUG = data =", data)
-            self.logger.debug('result scan data ->%s', data)
+            self.logger.debug('result scan data ->%s', result)
 
             content_type = "text/javascript"
-            self.start_response('200 OK', content_type, data)
+            self.start_response('200 OK', content_type, result)
             return
 
 class wemoServer(socketserver.TCPServer):
