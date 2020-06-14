@@ -11,7 +11,7 @@ from ouimeaux.environment import Environment
 from ouimeaux.config import in_home, WemoConfiguration
 from ouimeaux.utils import matcher
 
-__version__='0.9'
+__version__='0.91'
 
 reqlog = logging.getLogger("requests.packages.urllib3.connectionpool")
 reqlog.disabled = True
@@ -52,7 +52,8 @@ def handler(sender, **kwargs):
             value=0
         #print jeeWemo
         subprocess.Popen(['/usr/bin/php',jeeWemo,'serialnumber='+str(sender.serialnumber),'state='+str(value)])
-        print "{} state is {state}".format(sender.serialnumber, state="on" if kwargs.get('state') else "off")
+        print("State =%s",value)
+        #print "{} state is {state}".format(sender.serialnumber, state="on" if kwargs.get('state') else "off")
         
        
 initialize()
@@ -63,7 +64,7 @@ try:
     try:
         host, port = listen.split(':')
     except Exception:
-        print "Invalid bind address configuration:", listen
+        print ("Invalid bind address configuration:%s", listen)
         sys.exit(1)
     SocketIOServer((host, int(port)), app,
                    policy_server=False,
