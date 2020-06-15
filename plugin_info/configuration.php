@@ -22,6 +22,35 @@ if (!isConnect('admin')) {
 ?>
 <form class="form-horizontal">
     <fieldset>
+	<div class="form-group">
+			<label class="col-lg-4 control-label">{{Adresse IP du serveur
+				wemo}}</label>
+			<div class="col-lg-2">
+				<input class="configKey form-control" data-l1key="wemoIp"
+					value="127.0.0.1" placeholder="{{adr Ip}}" />
+			</div>
+		</div>
+		<div class="form-group">
+			<label class="col-lg-4 control-label">{{Port du serveur}}</label>
+			<div class="col-lg-2">
+				<input class="configKey form-control" data-l1key="wemoPort"
+					value="5000" placeholder="{{n° port}}" />
+			</div>
+		</div>
+		<div class="form-group">
+			<label class="col-lg-4 control-label">{{Utilisateur}}</label>
+			<div class="col-lg-2">
+				<input class="configKey form-control" data-l1key="wemoUser"
+					value="root" placeholder="{{utilisateur}}" />
+			</div>
+		</div>
+		<div class="form-group">
+			<label class="col-lg-4 control-label">{{Mot de passe}}</label>
+			<div class="col-lg-2">
+				<input class="configKey form-control" data-l1key="wemoPassword"
+					value="password" placeholder="{{mot de passe}}" />
+			</div>
+		</div>
         <?php if (exec('sudo cat /etc/sudoers')<>"") {?>
 
 	    <div class="form-group">

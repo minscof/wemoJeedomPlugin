@@ -121,6 +121,8 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             
         if cmd == 'scan':
             devices = pywemo.discover_devices()
+            result = '['
+            separator = ''
             for device in devices:
                 state = str(device.get_state(True))
                 logger.info('state = %s', state)
@@ -134,9 +136,10 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
                 logger.info("type = %s", model_name)
                 model = device.model
                 logger.info("model = %s", model)
-                result = json.dumps({'name': name, 'host': host, 'serialnumber': serialnumber, 'model_name': model_name, 'model': model, 'state': state})
-                result = '['+result+']'
-                
+                result += separator
+                result += json.dumps({'name': name, 'host': host, 'serialnumber': serialnumber, 'model_name': model_name, 'model': model, 'state': state})
+                separator = ','
+            result += ']'    
             
             # data = '{"1":{"vendor":'+str(equipments[0][0])+'},"2":{"vendor":'+str(equipments[1][0])+'}}'
             #print("DEBUG = data =", data)
@@ -145,6 +148,19 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             content_type = "text/javascript"
             self.start_response('200 OK', content_type, result)
             return
+        
+        if cmd == 'state':
+            result = '{"state": 0, "standby": 0}'
+            content_type = "text/javascript"
+            self.start_response('200 OK', content_type, result)
+            return
+
+        self.logger.debug('cmd %s not yet implemented', cmd)
+        result = '{"error": cmd not implemented}'
+        content_type = "text/javascript"
+        self.start_response('404 Not Found', content_type, result)
+        return
+
 
 class wemoServer(socketserver.TCPServer):
     def __init__(self, server_address, handler_class=jeedomRequestHandler):

@@ -182,7 +182,9 @@ class wemo extends eqLogic
 			log::add('wemo', 'debug', '|Equipement trouvé : ' . $device->serialnumber);
 			log::add('wemo', 'debug', '|__________________________');
 			self::saveEquipment($device->name, $device->host, $device->serialnumber, $device->model, $device->model_name, $device->state);
+			$count++;
 		}
+		log::add('wemo', 'info', '******** Fin du scan wemo - nombre d\'équipements trouvés = ' . $count . ' ********');
 	}
 
 	public static function saveEquipment($name, $host, $serialNumber, $model, $model_name, $status)
@@ -274,35 +276,21 @@ class wemo extends eqLogic
 	}
 
 
-
-	/*     * *********************Methode d'instance************************* */
-}
-
-class wemoCmd extends cmd
-{
-	/*     * *************************Attributs****************************** */
-
-
-	/*     * ***********************Methode static*************************** */
-
-
-	/*     * *********************Methode d'instance************************* */
-
-	public function preSave()
-	{
-		if ($this->getConfiguration('request') == '') {
-			//throw new Exception(__('La requete ne peut etre vide',__FILE__));
-		}
-	}
-
-
-
 	/* fonction appelée après la fin de la séquence de sauvegarde */
 	public function postSave()
 	{
+		log::add('wemo', 'debug', 'postsave id equipment : ' . $this->getId());
 		if (in_array($this->getConfiguration('model_name'), array('Switch', 'Insight', 'Lightswitch'))) {
 			$wemoCmd = new wemoCmd();
 			$wemoCmd->setName(__('Etat', __FILE__));
+			$wemoCmd->setEqLogic_id($this->getId());
+			$wemoCmd->setConfiguration('request', 'state');
+			$wemoCmd->setType('info');
+			$wemoCmd->setSubType('binary');
+			$wemoCmd->setDisplay('generic_type', 'ENERGY_STATE');
+			$wemoCmd->save();
+
+			$wemoCmd->setName(__('Standby', __FILE__));
 			$wemoCmd->setEqLogic_id($this->getId());
 			$wemoCmd->setConfiguration('request', 'state');
 			$wemoCmd->setType('info');
@@ -335,6 +323,16 @@ class wemoCmd extends cmd
 			$wemoCmd->setType('action');
 			$wemoCmd->setSubType('other');
 			$wemoCmd->save();
+
+			if ($this->getConfiguration('model_name') == "Insight") {
+				$wemoCmd = new wemoCmd();
+				$wemoCmd->setName(__('currentPower', __FILE__));
+				$wemoCmd->setEqLogic_id($this->getId());
+				$wemoCmd->setConfiguration('request', 'currentPower');
+				$wemoCmd->setType('info');
+				$wemoCmd->setSubType('numeric');
+				$wemoCmd->save();
+			}
 		} elseif (in_array($this->getConfiguration('model_name'), array('Motion'))) {
 			$wemoCmd = new wemoCmd();
 			$wemoCmd->setName(__('Etat', __FILE__));
@@ -347,32 +345,80 @@ class wemoCmd extends cmd
 	}
 
 
+	/*     * *********************Methode d'instance************************* */
+}
+
+class wemoCmd extends cmd
+{
+	/*     * *************************Attributs****************************** */
+
+
+	/*     * ***********************Methode static*************************** */
+
+
+	/*     * *********************Methode d'instance************************* */
+
+
+
 
 	public function execute($_options = null)
 	{
-		$wemo = $this->getEqLogic();
-		if ($this->type == 'action') {
-			$pest = new Pest('127.0.0.1:5000');
-			try {
-				$url = '/api/device/' . rawurlencode($wemo->getConfiguration('name')) . '?state=' . $this->getConfiguration('request');
-				//log::add('wemo', 'info', 'url='.$url);
-				$request = $pest->post($url);
-				log::add('wemo', 'info', 'Action ' . $url . ' ok');
-				return TRUE;
-			} catch (Pest_NotFound $e) {
-				// 404
-				log::add('wemo', 'warn', 'device=' . $wemo->getConfiguration('name') . ' not found !');
-				message::add('wemo', 'device not found');
-				echo $e->getMessage();
-				echo "\n";
-				return false;
-			}
+
+		if (empty($_options)) {
+			$param = "none";
 		} else {
-			//return true;	
-			return $this->getValue();
+			$param = print_r($_options, true);
 		}
 
-		return $response;
+		log::add('wemo', 'debug', 'Commande reçue à exécuter : ' . $this->getConfiguration('request') . ' de type ' . $this->type . ' paramètres =' . $param);
+		if (empty($this->getConfiguration('request'))) {
+			log::add('wemo', 'warning', 'Echec exécution d\'une commande vide');
+			return;
+		}
+		$wemo = $this->getEqLogic();
+		$action = $this->getConfiguration('request');
+		$logicalAddress = $wemo->getConfiguration('logicalAddress');
+		switch ($action) {
+			case "channel1":
+				$action = 'transmit';
+				$_options['title'] = $logicalAddress;
+				$_options['message'] = '44:' . Channel1;
+				break;
+		}
+		if (!empty($_options)) {
+			$param = print_r($_options, true);
+			log::add('wemo', 'debug', '-> Enrichissement dynamique des paramètres : ' . $this->getConfiguration('request') . ' de type ' . $this->type . ' paramètres =' . $param);
+		}
+		// log::add('wemo','debug','Commande reçue : ' . $action);
+		$opts = array(
+			'http' => array(
+				'method' => "GET",
+				'header' => "Accept-language: en\r\n" . "Cookie: foo=bar\r\n"
+			)
+		);
+		$context = stream_context_create($opts);
+		// pour éviter des logs intempestifs quand on cherche à arrêter un serveur déjà arrêté.. @
+		if (isset($_options['title'])) {
+			@$file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', 'localhost') . ':' . config::byKey('wemoPort', 'wemo', '5000') . '/' . rawurlencode($action) . '?address=' . rawurlencode($_options['title'] . '&parameter=' . rawurlencode($_options['message'])), false, $context);
+		} else {
+			@$file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', 'localhost') . ':' . config::byKey('wemoPort', 'wemo', '5000') . '/' . rawurlencode($action) . '?address=' . rawurlencode($wemo->getLogicalId()), false, $context);
+		}
+
+		if ($file === False) {
+			log::add('wemo', 'warning', 'Echec exécution de la commande  ' . $this->getConfiguration('request'));
+		} else {
+			log::add('wemo', 'debug', 'Exécution de la commande  ' . $this->getConfiguration('request') . ' terminée ' . $file);
+			//todo analyse result
+			$value = 0;
+			$cmd = $this->getEqLogic()->getCmd('info', 'state');
+			if ($cmd->getValue() != $value) {
+				$cmd->setValue($value);
+				$cmd->save();
+				$cmd->setCollectDate('');
+				$cmd->event($value);
+			}
+		}
+		return FALSE;
 	}
 
 	/*     * **********************Getteur Setteur*************************** */

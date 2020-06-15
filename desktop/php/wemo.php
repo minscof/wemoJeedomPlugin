@@ -14,7 +14,6 @@ if (!$deamonRunning) {
 }
 
 ?>
-
 <div class="row row-overflow">
     <div class="col-lg-2">
         <div class="bs-sidebar">
@@ -55,9 +54,20 @@ if (!$deamonRunning) {
             <div class="eqLogicThumbnailContainer">
                 <?php
                 foreach ($eqLogics as $eqLogic) {
-                    echo '<div class="eqLogicDisplayCard cursor" data-eqLogic_id="' . $eqLogic->getId() . '" style="background-color : #ffffff; height : 200px;margin-bottom : 10px;padding : 5px;border-radius: 2px;width : 160px;margin-left : 10px;" >';
+                    $opacity = '';
+                    if ($eqLogic->getIsEnable() != 1) {
+                        $opacity = ' -webkit-filter: grayscale(100%); -moz-filter: grayscale(100);
+                                -o-filter: grayscale(100%);  -ms-filter: grayscale(100%);  filter: grayscale(100%); opacity: 0.35;';
+                    }
+                    echo '<div class="eqLogicDisplayCard cursor" data-eqLogic_id="' . $eqLogic->getId() . '" style="background-color : #ffffff; height : 200px;margin-bottom : 10px;padding : 5px;border-radius: 2px;width : 160px;margin-left : 10px;' . $opacity . '" >';
                     echo "<center>";
-                    echo '<img src="plugins/wemo/doc/images/wemo_icon.png" height="105" width="95" />';
+                    $file = "plugins/hdmiCec/core/template/images/" . $eqLogic->getConfiguration('model') . ".png";
+                    if (file_exists($file)) {
+                        $path = $file;
+                    } else {
+                        $path = 'plugins/wemo/doc/images/wemo_icon.png';
+                    }
+                    echo '<img src="' . $path . '" height="105"  />';
                     echo "</center>";
                     echo '<span style="font-size : 1.1em;position:relative; top : 15px;word-break: break-all;white-space: pre-wrap;word-wrap: break-word;"><center>' . $eqLogic->getHumanName(true, true) . '</center></span>';
                     echo '</div>';
@@ -71,16 +81,18 @@ if (!$deamonRunning) {
             <fieldset>
                 <legend><i class="fa fa-arrow-circle-left eqLogicAction cursor" data-action="returnToThumbnailDisplay"></i> {{Général}}<i class='fa fa-cogs eqLogicAction pull-right cursor expertModeVisible' data-action='configure'></i></legend>
                 <div class="form-group">
-                    <label class="col-lg-2 control-label">{{Nom de l'équipement wemo}}</label>
-                    <div class="col-lg-3">
-                        <input type="text" class="eqLogicAttr form-control" data-l1key="id" style="display : none;" />
-                        <input type="text" class="eqLogicAttr form-control" data-l1key="name" placeholder="{{Nom de l'équipement wemo}}"/>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="col-lg-2 control-label" >{{Objet parent}}</label>
-                    <div class="col-lg-3">
-                        <select id="sel_object" class="eqLogicAttr form-control" data-l1key="object_id">
+                    <label class="col-lg-2 control-label">{{Nom de l'équipement}}</label>
+							<div class="col-lg-3">
+								<input type="text" class="eqLogicAttr form-control"
+									data-l1key="id" style="display: none;" /> <input type="text"
+									class="eqLogicAttr form-control" data-l1key="name"
+									placeholder="{{Nom de l'équipement}}" />
+							</div>
+
+							<label class="col-lg-3 control-label">{{Objet parent}}</label>
+							<div class="col-lg-3">
+								<select id="sel_object" class="eqLogicAttr form-control"
+									data-l1key="object_id">
                             <option value="">{{Aucun}}</option>
                             <?php
                             foreach (jeeObject::all() as $object) {
@@ -91,8 +103,8 @@ if (!$deamonRunning) {
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="col-lg-4 control-label">{{Catégorie}}</label>
-                    <div class="col-lg-8">
+                    <label class="col-lg-2 control-label">{{Catégorie}}</label>
+                    <div class="col-lg-9">
                         <?php
                         foreach (jeedom::getConfiguration('eqLogic:category') as $key => $value) {
                             echo '<label class="checkbox-inline">';
@@ -104,12 +116,18 @@ if (!$deamonRunning) {
                     </div>
                 </div>
                 <div class="form-group">
-			        <label class="col-sm-4 control-label"></label>
-			        <div class="col-sm-8">
-			          <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-label-text="{{Activer}}" data-l1key="isEnable" checked/></label>
-			          <label class="checkbox-inline"><input type="checkbox" class="eqLogicAttr" data-label-text="{{Visible}}" data-l1key="isVisible" checked/></label>
-			        </div>
-		      </div>
+							<label class="col-sm-2 control-label"></label>
+							<div class="col-sm-9">
+								<label class="checkbox-inline"><input type="checkbox"
+									class="eqLogicAttr" data-l1key="isEnable" checked />{{Activer}}</label>
+								<label class="checkbox-inline"><input type="checkbox"
+									class="eqLogicAttr" data-l1key="isVisible" checked />{{Visible}}</label>
+							</div>
+                        </div>
+                        
+                        <legend>
+							<i class="fa fa-wrench"></i> {{Configuration}}
+						</legend>
                 <div class="form-group">
                     <label class="col-lg-2 control-label">{{Adresse IP}}</label>
                     <div class="col-lg-3">
@@ -131,7 +149,7 @@ if (!$deamonRunning) {
                 <div class="form-group">
                     <label class="col-lg-2 control-label">{{Type}}</label>
                     <div class="col-lg-3">
-                        <input type="text" id="type" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="type" placeholder="{{model_name}}" disabled/>
+                        <input type="text" id="model_name" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="type" placeholder="{{model_name}}" disabled/>
                     </div>
                 </div>
                 
