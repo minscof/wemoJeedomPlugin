@@ -155,6 +155,12 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             self.start_response('200 OK', content_type, result)
             return
 
+        if cmd == 'refresh':
+            result = '{"state": 0, "standby": 0}'
+            content_type = "text/javascript"
+            self.start_response('200 OK', content_type, result)
+            return
+
         self.logger.debug('cmd %s not yet implemented', cmd)
         result = '{"error": cmd not implemented}'
         content_type = "text/javascript"
