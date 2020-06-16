@@ -280,75 +280,116 @@ class wemo extends eqLogic
 	public function postSave()
 	{
 		log::add('wemo', 'debug', ' Postsave id equipment : ' . $this->getId());
-		$wemoCmd = new wemoCmd();
-		$wemoCmd->setName(__('Refresh', __FILE__));
-		$wemoCmd->setEqLogic_id($this->getId());
-		$wemoCmd->setConfiguration('request', 'refresh');
-		$wemoCmd->setType('action');
-		$wemoCmd->setSubType('other');
-		$wemoCmd->save();
+		$cmd = $this->getCmd(null, 'refresh');
+		if (! is_object($cmd)) {
+			$cmd = new wemoCmd();
+			$cmd->setLogicalId('refresh');
+			$cmd->setIsVisible(1);
+		}
+		$cmd->setName(__('Refresh', __FILE__));
+		$cmd->setEqLogic_id($this->getId());
+		$cmd->setConfiguration('request', 'refresh');
+		$cmd->setType('action');
+		$cmd->setSubType('other');
+		$cmd->save();
 
 		if (in_array($this->getConfiguration('model_name'), array('Switch', 'Insight', 'Lightswitch'))) {
-			$wemoCmd = new wemoCmd();
-			$wemoCmd->setName(__('Etat', __FILE__));
-			$wemoCmd->setEqLogic_id($this->getId());
-			$wemoCmd->setConfiguration('request', 'state');
-			$wemoCmd->setType('info');
-			$wemoCmd->setSubType('binary');
-			$wemoCmd->setDisplay('generic_type', 'ENERGY_STATE');
-			$wemoCmd->save();
+			$cmd = $this->getCmd(null, 'state');
+        	if (! is_object($cmd)) {
+				$cmd = new wemoCmd();
+				$cmd->setLogicalId('state');
+				$cmd->setIsVisible(1);
+			}
+			$cmd->setName(__('Etat', __FILE__));
+			$cmd->setEqLogic_id($this->getId());
+			$cmd->setConfiguration('request', 'state');
+			$cmd->setType('info');
+			$cmd->setSubType('binary');
+			$cmd->setDisplay('generic_type', 'ENERGY_STATE');
+			$cmd->save();
 
-			$wemoCmd->setName(__('Standby', __FILE__));
-			$wemoCmd->setEqLogic_id($this->getId());
-			$wemoCmd->setConfiguration('request', 'state');
-			$wemoCmd->setType('info');
-			$wemoCmd->setSubType('binary');
-			$wemoCmd->setDisplay('generic_type', 'ENERGY_STATE');
-			$wemoCmd->save();
+			$cmd = $this->getCmd(null, 'standby');
+        	if (! is_object($cmd)) {
+				$cmd = new wemoCmd();
+				$cmd->setLogicalId('standby');
+				$cmd->setIsVisible(1);
+			}
+			$cmd->setName(__('Standby', __FILE__));
+			$cmd->setEqLogic_id($this->getId());
+			$cmd->setConfiguration('request', 'state');
+			$cmd->setType('info');
+			$cmd->setSubType('binary');
+			$cmd->setDisplay('generic_type', 'ENERGY_STATE');
+			$cmd->save();
 
-			$wemoCmd = new wemoCmd();
-			$wemoCmd->setName(__('On', __FILE__));
-			$wemoCmd->setEqLogic_id($this->getId());
-			$wemoCmd->setConfiguration('request', 'on');
-			$wemoCmd->setType('action');
-			$wemoCmd->setSubType('other');
-			$wemoCmd->setDisplay('generic_type', 'ENERGY_ON');
-			$wemoCmd->save();
+			$cmd = $this->getCmd(null, 'on');
+        	if (! is_object($cmd)) {
+				$cmd = new wemoCmd();
+				$cmd->setLogicalId('on');
+				$cmd->setIsVisible(1);
+			}
+			$cmd->setName(__('On', __FILE__));
+			$cmd->setEqLogic_id($this->getId());
+			$cmd->setConfiguration('request', 'on');
+			$cmd->setType('action');
+			$cmd->setSubType('other');
+			$cmd->setDisplay('generic_type', 'ENERGY_ON');
+			$cmd->save();
 
-			$wemoCmd = new wemoCmd();
-			$wemoCmd->setName(__('Off', __FILE__));
-			$wemoCmd->setEqLogic_id($this->getId());
-			$wemoCmd->setConfiguration('request', 'off');
-			$wemoCmd->setType('action');
-			$wemoCmd->setSubType('other');
-			$wemoCmd->setDisplay('generic_type', 'OFF');
-			$wemoCmd->save();
+			$cmd = $this->getCmd(null, 'off');
+        	if (! is_object($cmd)) {
+				$cmd = new wemoCmd();
+				$cmd->setLogicalId('off');
+				$cmd->setIsVisible(1);
+			}
+			$cmd->setName(__('Off', __FILE__));
+			$cmd->setEqLogic_id($this->getId());
+			$cmd->setConfiguration('request', 'off');
+			$cmd->setType('action');
+			$cmd->setSubType('other');
+			$cmd->setDisplay('generic_type', 'OFF');
+			$cmd->save();
 
-			$wemoCmd = new wemoCmd();
-			$wemoCmd->setName(__('Clignote', __FILE__));
-			$wemoCmd->setEqLogic_id($this->getId());
-			$wemoCmd->setConfiguration('request', 'blink');
-			$wemoCmd->setType('action');
-			$wemoCmd->setSubType('other');
-			$wemoCmd->save();
+			$cmd = $this->getCmd(null, 'blink');
+        	if (! is_object($cmd)) {
+				$cmd = new wemoCmd();
+				$cmd->setLogicalId('blink');
+				$cmd->setIsVisible(1);
+			}
+			$cmd->setName(__('Clignote', __FILE__));
+			$cmd->setEqLogic_id($this->getId());
+			$cmd->setConfiguration('request', 'blink');
+			$cmd->setType('action');
+			$cmd->setSubType('other');
+			$cmd->save();
 
 			if ($this->getConfiguration('model_name') == "Insight") {
-				$wemoCmd = new wemoCmd();
-				$wemoCmd->setName(__('CurrentPower', __FILE__));
-				$wemoCmd->setEqLogic_id($this->getId());
-				$wemoCmd->setConfiguration('request', 'currentPower');
-				$wemoCmd->setType('info');
-				$wemoCmd->setSubType('numeric');
-				$wemoCmd->save();
+				$cmd = $this->getCmd(null, 'currentPower');
+				if (! is_object($cmd)) {
+					$cmd = new wemoCmd();
+					$cmd->setLogicalId('currentPower');
+					$cmd->setIsVisible(1);
+				}
+				$cmd->setName(__('CurrentPower', __FILE__));
+				$cmd->setEqLogic_id($this->getId());
+				$cmd->setConfiguration('request', 'currentPower');
+				$cmd->setType('info');
+				$cmd->setSubType('numeric');
+				$cmd->save();
 			}
 		} elseif (in_array($this->getConfiguration('model_name'), array('Motion'))) {
-			$wemoCmd = new wemoCmd();
-			$wemoCmd->setName(__('Etat', __FILE__));
-			$wemoCmd->setEqLogic_id($this->getId());
-			$wemoCmd->setConfiguration('request', 'state');
-			$wemoCmd->setType('info');
-			$wemoCmd->setSubType('binary');
-			$wemoCmd->save();
+			$cmd = $this->getCmd(null, 'state');
+        	if (! is_object($cmd)) {
+				$cmd = new wemoCmd();
+				$cmd->setLogicalId('state');
+				$cmd->setIsVisible(1);
+			}
+			$cmd->setName(__('Etat', __FILE__));
+			$cmd->setEqLogic_id($this->getId());
+			$cmd->setConfiguration('request', 'state');
+			$cmd->setType('info');
+			$cmd->setSubType('binary');
+			$cmd->save();
 		}
 	}
 
@@ -420,7 +461,7 @@ class wemoCmd extends cmd
 			//todo analyse result
 			$value = 0;
 			$cmd = $this->getEqLogic()->getCmd('info', 'state');
-			if ($cmd->getValue() != $value) {
+			if ($cmd && $cmd->getValue() != $value) {
 				$cmd->setValue($value);
 				$cmd->save();
 				$cmd->setCollectDate('');
