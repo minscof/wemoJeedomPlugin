@@ -258,8 +258,8 @@ class wemo extends eqLogic
 			}
 			$equipment->setName($newName);
 			log::add('wemo', 'debug', '  Choix du nom de cet équipement :' . $newName);
-			$equipment->setIsEnable(true);
-			$equipment->setIsVisible(true);
+			$equipment->setIsEnable(1);
+			$equipment->setIsVisible(1);
 			$equipment->save();
 			log::add('wemo', 'debug', '  Ajout terminé d\'un nouvel équipement :' . $equipment->getName() . ' - LogicalId=' . $id);
 		}
@@ -279,11 +279,11 @@ class wemo extends eqLogic
 	/* fonction appelée après la fin de la séquence de sauvegarde */
 	public function postSave()
 	{
-		log::add('wemo', 'debug', 'postsave id equipment : ' . $this->getId());
+		log::add('wemo', 'debug', ' Postsave id equipment : ' . $this->getId());
 		$wemoCmd = new wemoCmd();
 		$wemoCmd->setName(__('Refresh', __FILE__));
 		$wemoCmd->setEqLogic_id($this->getId());
-		$wemoCmd->setConfiguration('request', 'refesh');
+		$wemoCmd->setConfiguration('request', 'refresh');
 		$wemoCmd->setType('action');
 		$wemoCmd->setSubType('other');
 		$wemoCmd->save();
@@ -412,8 +412,9 @@ class wemoCmd extends cmd
 			@$file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', 'localhost') . ':' . config::byKey('wemoPort', 'wemo', '5000') . '/' . rawurlencode($action) . '?address=' . rawurlencode($wemo->getLogicalId()), false, $context);
 		}
 
-		if ($file === False) {
-			log::add('wemo', 'warning', 'Echec exécution de la commande  ' . $this->getConfiguration('request'));
+		if ($file === false) {
+			$result = print_r($http_response_header,true);
+			log::add('wemo', 'warning', 'Echec exécution de la commande  ' . $this->getConfiguration('request').' code ='.$result);
 		} else {
 			log::add('wemo', 'debug', 'Exécution de la commande  ' . $this->getConfiguration('request') . ' terminée ' . $file);
 			//todo analyse result
@@ -426,7 +427,7 @@ class wemoCmd extends cmd
 				$cmd->event($value);
 			}
 		}
-		return FALSE;
+		return false;
 	}
 
 	/*     * **********************Getteur Setteur*************************** */
