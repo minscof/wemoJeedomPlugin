@@ -280,6 +280,14 @@ class wemo extends eqLogic
 	public function postSave()
 	{
 		log::add('wemo', 'debug', 'postsave id equipment : ' . $this->getId());
+		$wemoCmd = new wemoCmd();
+		$wemoCmd->setName(__('Refresh', __FILE__));
+		$wemoCmd->setEqLogic_id($this->getId());
+		$wemoCmd->setConfiguration('request', 'refesh');
+		$wemoCmd->setType('action');
+		$wemoCmd->setSubType('other');
+		$wemoCmd->save();
+
 		if (in_array($this->getConfiguration('model_name'), array('Switch', 'Insight', 'Lightswitch'))) {
 			$wemoCmd = new wemoCmd();
 			$wemoCmd->setName(__('Etat', __FILE__));
@@ -326,7 +334,7 @@ class wemo extends eqLogic
 
 			if ($this->getConfiguration('model_name') == "Insight") {
 				$wemoCmd = new wemoCmd();
-				$wemoCmd->setName(__('currentPower', __FILE__));
+				$wemoCmd->setName(__('CurrentPower', __FILE__));
 				$wemoCmd->setEqLogic_id($this->getId());
 				$wemoCmd->setConfiguration('request', 'currentPower');
 				$wemoCmd->setType('info');

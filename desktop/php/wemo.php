@@ -149,7 +149,7 @@ if (!$deamonRunning) {
                 <div class="form-group">
                     <label class="col-lg-2 control-label">{{Type}}</label>
                     <div class="col-lg-3">
-                        <input type="text" id="model_name" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="type" placeholder="{{model_name}}" disabled/>
+                        <input type="text" id="model_name" class="eqLogicAttr form-control" data-l1key="configuration" data-l2key="model_name" placeholder="{{model_name}}" disabled/>
                     </div>
                 </div>
                 
