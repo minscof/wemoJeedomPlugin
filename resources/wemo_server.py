@@ -42,7 +42,22 @@ def on_motion(motion):
     print "Motion found!", motion.name
 '''    
 
+
+def event(self, _type, value):
+    global logger
+    logger.info('event arggument = %s',locals().keys())
+    try:
+        logger.info('event for device %s with type = %s value %s', self.serialnumber, _type, value)
+        subprocess.Popen(['/usr/bin/php',jeeWemo,'serialnumber='+self.serialnumber,'state='+value[0]])
+    except:
+        logger.info('bug exception raised in event for device ')
+        logger.info('bug in event for device  with type = %s value %s', _type, value)
+ 
+
 devices = pywemo.discover_devices()
+
+SUBSCRIPTION_REGISTRY = pywemo.SubscriptionRegistry()
+SUBSCRIPTION_REGISTRY.start()
 
 for device in devices:
     state = str(device.get_state(True))
@@ -51,7 +66,11 @@ for device in devices:
     logger.info("serialnumber = %s", serialnumber)
     subprocess.Popen(['/usr/bin/php',jeeWemo,'serialnumber='+serialnumber,'state='+state])
     #print "{} state is {state}".format(sender.serialnumber, state="on" if kwargs.get('state') else "off")
-        
+    SUBSCRIPTION_REGISTRY.register(device)
+    SUBSCRIPTION_REGISTRY.on(device, 'BinaryState', event) 
+    SUBSCRIPTION_REGISTRY.on(device, 'EnergyPerUnitCost', event)
+
+
 class jeedomRequestHandler(socketserver.BaseRequestHandler):
     def __init__(self, request, client_address, server):
         # initialization.
