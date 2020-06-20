@@ -63,6 +63,13 @@ logger.info('Jeedom callback cmd %s', jeedomCmd)
 #print('Server started at ', strftime("%a, %d %b %Y %H:%M:%S +0000", localtime(time_start)), 'listening on port ', PORT)  
 #logger.info('Server started at %s listening on port %s',strftime("%a, %d %b %Y %H:%M:%S +0000", localtime(time_start)), PORT)
 
+
+def _status(state):
+    return "1" if state == 1 else "0"
+
+def _standby(state):
+    return "1" if state == 8 else "0"
+
 def parse_insight_params(params):
         """Parse the Insight parameters."""
         (
@@ -77,7 +84,8 @@ def parse_insight_params(params):
             todaymw,
             totalmw
         ) = params.split('|')
-        return {'state': state,
+        return {'status': _status(state),
+                'standby' : _standby(state),
                 'lastchange': datetime.fromtimestamp(int(lastchange)),
                 'onfor': int(onfor),
                 'ontoday': int(ontoday),
@@ -85,7 +93,7 @@ def parse_insight_params(params):
                 'wifipower' : int(wifipower),
                 'todaymw': int(float(todaymw)),
                 'totalmw': int(float(totalmw)),
-                'currentpower': int(float(currentmw))}
+                'currentpower': str(int(float(currentmw)))}
 
 
 def event(self, _type, value):
@@ -96,10 +104,11 @@ def event(self, _type, value):
         if _type == 'BinaryState':
             result = parse_insight_params(value)
             #subprocess.Popen(['/usr/bin/php',jeeWemo,'serialNumber='+self.serialnumber,'state=' + value[0]])
-            value = '{"logicalAddress":"' + self.serialnumber + '","state":"' + value[0] +'"}'
-            value = '{"logicalAddress":"' + self.serialnumber + '","state":"' + result['state'] +'"}'
+            value = '{"logicalAddress":"' + self.serialnumber + '","status":"' + result['status'] +'"}'
             urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
-            value = '{"logicalAddress":"' + self.serialnumber + '","currentPower":"' + str(result['currentpower']) +'"}'
+            value = '{"logicalAddress":"' + self.serialnumber + '","standby":"' + result['standby'] +'"}'
+            urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
+            value = '{"logicalAddress":"' + self.serialnumber + '","currentPower":"' + result['currentpower'] +'"}'
             urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
     except:
         logger.info('********  bug exception raised in event for device ')
@@ -117,7 +126,9 @@ for device in devices:
     serialNumber = device.serialnumber
     logger.info("serialNumber = %s", serialNumber)
     #subprocess.Popen(['/usr/bin/php',jeeWemo,'serialnumber='+serialnumber,'state='+state])
-    value = '{"logicalAddress":"' + serialNumber + '","state":"' + state +'"}'
+    value = '{"logicalAddress":"' + serialNumber + '","status":"' + _status(state) +'"}'
+    urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
+    value = '{"logicalAddress":"' + serialNumber + '","standby":"' + _standby(state) +'"}'
     urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
     value = '{"logicalAddress":"' + serialNumber + '","currentPower":"' + str(device.current_power) +'"}'
     urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
@@ -212,7 +223,7 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
                 model = device.model
                 logger.info("model = %s", model)
                 result += separator
-                result += json.dumps({'name': name, 'host': host, 'serialNumber': serialNumber, 'modelName': modelName, 'model': model, 'state': state})
+                result += json.dumps({'name': name, 'host': host, 'serialNumber': serialNumber, 'modelName': modelName, 'model': model, 'status': _status(state), 'standby': _standby(state)})
                 separator = ','
             result += ']'    
             
@@ -229,12 +240,12 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             for device in devices:
                 if device.serialnumber == value :
                     device.update_insight_params()
-                    result = '{"state": '+ device.state +', "standby": '+ device.state +', "currentPower": '+ str(device.current_power) +'}'
+                    result = '{"status": '+ _status(device.get_state()) +', "standby": '+ _standby(device.get_state()) +', "currentPower": '+ str(device.current_power) +'}'
                     content_type = "text/javascript"
                     self.start_response('200 OK', content_type, result)
                     return
             #pas trouvé tout à 0 
-            result = '{"state": 0, "standby": 0, "currentPower": 0}'
+            result = '{"status": 0, "standby": 0, "currentPower": 0}'
             content_type = "text/javascript"
             self.start_response('200 OK', content_type, result)
             return
@@ -244,12 +255,12 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             for device in devices:
                 if device.serialnumber == value :
                     device.update_insight_params()
-                    result = '{"state": '+ device.state +', "standby": '+ device.state +', "currentPower": '+ str(device.current_power) +', "wifiPower": '+ "41" +'}'
+                    result = '{"status": '+ _status(device.get_state()) +', "standby": '+ _standby(device.get_state()) +', "currentPower": '+ str(device.current_power) +', "wifiPower": '+ "41" +'}'
                     content_type = "text/javascript"
                     self.start_response('200 OK', content_type, result)
                     return
             #pas trouvé tout à 0 
-            result = '{"state": 0, "standby": 0, "currentPower": 0}'
+            result = '{"status": 0, "standby": 0, "currentPower": 0}'
             content_type = "text/javascript"
             self.start_response('200 OK', content_type, result)
             return

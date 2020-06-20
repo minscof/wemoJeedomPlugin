@@ -205,13 +205,13 @@ class wemo extends eqLogic
 			log::add('wemo', 'debug', '___________________________');
 			log::add('wemo', 'debug', '|Equipement trouvé : ' . $device->serialNumber);
 			log::add('wemo', 'debug', '|__________________________');
-			self::saveEquipment($device->name, $device->host, $device->serialNumber, $device->model, $device->modelName, $device->state);
+			self::saveEquipment($device->name, $device->host, $device->serialNumber, $device->model, $device->modelName, $device->status, $device->standby);
 			$count++;
 		}
 		log::add('wemo', 'info', '******** Fin du scan wemo - nombre d\'équipements trouvés = ' . $count . ' ********');
 	}
 
-	public static function saveEquipment($name, $host, $serialNumber, $model, $modelName, $status)
+	public static function saveEquipment($name, $host, $serialNumber, $model, $modelName, $status, $standby)
 	{
 		log::add('wemo', 'debug', '  Début saveEquipment =' . $host);
 		$name = init('name', $name);
@@ -249,10 +249,19 @@ class wemo extends eqLogic
 			$statusCmd = $elogic->getCmd(null, 'status');
 			if ($statusCmd) {
 				log::add('wemo', 'debug', '  Valeur du status de l\'équipement existant :' . $statusCmd->getValue() . ' - status=' . $status);
-				if ($statusCmd->getValue() != $value = self::convertStatus($status)) {
-					log::add('wemo', 'debug', '  Mise à jour du status de l\'équipement existant :' . self::convertStatus($status) . ' au lieu de ' . $statusCmd->getValue());
-					$statusCmd->setValue(self::convertStatus($status));
+				if ($statusCmd->getValue() != $status) {
+					log::add('wemo', 'debug', '  Mise à jour du status de l\'équipement existant :' . $status . ' au lieu de ' . $statusCmd->getValue());
+					$statusCmd->setValue($status);
 					$statusCmd->save();
+				}
+			}
+			$standbyCmd = $elogic->getCmd(null, 'standby');
+			if ($standbyCmd) {
+				log::add('wemo', 'debug', '  Valeur du standby de l\'équipement existant :' . $standbyCmd->getValue() . ' - standby =' . $standby);
+				if ($standbyCmd->getValue() != $standby) {
+					log::add('wemo', 'debug', '  Mise à jour du standby de l\'équipement existant :' . $standby . ' au lieu de ' . $standbyCmd->getValue());
+					$standbyCmd->setValue($standby);
+					$standbyCmd->save();
 				}
 			}
 
@@ -354,15 +363,15 @@ class wemo extends eqLogic
 		$cmd->save();
 
 		if (in_array($this->getConfiguration('modelName'), array('Switch', 'Insight', 'Lightswitch'))) {
-			$cmd = $this->getCmd(null, 'state');
+			$cmd = $this->getCmd(null, 'status');
         	if (! is_object($cmd)) {
 				$cmd = new wemoCmd();
-				$cmd->setLogicalId('state');
+				$cmd->setLogicalId('status');
 				$cmd->setIsVisible(1);
 			}
 			$cmd->setName(__('Etat', __FILE__));
 			$cmd->setEqLogic_id($this->getId());
-			$cmd->setConfiguration('request', 'state');
+			$cmd->setConfiguration('request', 'status');
 			$cmd->setType('info');
 			$cmd->setSubType('binary');
 			$cmd->setDisplay('generic_type', 'ENERGY_STATE');
@@ -376,7 +385,7 @@ class wemo extends eqLogic
 			}
 			$cmd->setName(__('Standby', __FILE__));
 			$cmd->setEqLogic_id($this->getId());
-			$cmd->setConfiguration('request', 'state');
+			$cmd->setConfiguration('request', 'standby');
 			$cmd->setType('info');
 			$cmd->setSubType('binary');
 			$cmd->setDisplay('generic_type', 'ENERGY_STATE');
@@ -438,15 +447,15 @@ class wemo extends eqLogic
 				$cmd->save();
 			}
 		} elseif (in_array($this->getConfiguration('modelName'), array('Motion'))) {
-			$cmd = $this->getCmd(null, 'state');
+			$cmd = $this->getCmd(null, 'status');
         	if (! is_object($cmd)) {
 				$cmd = new wemoCmd();
-				$cmd->setLogicalId('state');
+				$cmd->setLogicalId('status');
 				$cmd->setIsVisible(1);
 			}
 			$cmd->setName(__('Etat', __FILE__));
 			$cmd->setEqLogic_id($this->getId());
-			$cmd->setConfiguration('request', 'state');
+			$cmd->setConfiguration('request', 'status');
 			$cmd->setType('info');
 			$cmd->setSubType('binary');
 			$cmd->save();
@@ -519,13 +528,32 @@ class wemoCmd extends cmd
 		} else {
 			log::add('wemo', 'debug', 'Exécution de la commande  ' . $this->getConfiguration('request') . ' terminée ' . $file);
 			//todo analyse result
-			$value = 0;
-			$cmd = $this->getEqLogic()->getCmd('info', 'state');
-			if ($cmd && $cmd->getValue() != $value) {
-				$cmd->setValue($value);
-				$cmd->save();
-				$cmd->setCollectDate('');
-				$cmd->event($value);
+			if ( in_array($this->getConfiguration('request'),array('refresh','blink'))) {
+				$result = json_decode($file);
+				$cmd = $this->getEqLogic()->getCmd('info', 'status');
+				$value = $result->{'status'};
+				if ($cmd && $cmd->getValue() != $value) {
+					$cmd->setValue($value);
+					$cmd->save();
+					$cmd->setCollectDate('');
+					$cmd->event($value);
+				}
+				$cmd = $this->getEqLogic()->getCmd('info', 'standby');
+				$value = $result->{'standby'};
+				if ($cmd && $cmd->getValue() != $value) {
+					$cmd->setValue($value);
+					$cmd->save();
+					$cmd->setCollectDate('');
+					$cmd->event($value);
+				}
+				$cmd = $this->getEqLogic()->getCmd('info', 'currentPower');
+				$value = $result->{'currentPower'};
+				if ($cmd && $cmd->getValue() != $value) {
+					$cmd->setValue($value);
+					$cmd->save();
+					$cmd->setCollectDate('');
+					$cmd->event($value);
+				}
 			}
 		}
 		return false;
