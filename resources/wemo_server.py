@@ -10,7 +10,7 @@ import json
 import pywemo
 import urllib.request, urllib.error, urllib.parse
 
-__version__='0.91'
+__version__='0.92'
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)-15s - %(name)s: %(message)s')
 logger = logging.getLogger('wemo_server')
 logger.info('Program starting version %s',__version__)
@@ -29,10 +29,10 @@ elif os.path.isfile('/var/www/html/plugins/wemo/core/php/jeeWemo.php') :
 else :
     jeeWemo = '/var/www/plugins/wemo/core/php/jeeWemo.php'
 
-level = logging.DEBUG
+#level = logging.DEBUG
 #if getattr(args, 'debug', False):
 #    level = logging.DEBUG
-logging.basicConfig(level=level)
+#logging.basicConfig(level=level)
 
 if len(sys.argv) > 1:
     PORT = int(sys.argv[1])
@@ -42,42 +42,38 @@ else:
     HOST, PORT = "localhost", 5000
 
 # jeedomIP=${2}
-if len(sys.argv) > 4:
-    jeedomIP = sys.argv[4]
+if len(sys.argv) > 2:
+    jeedomIP = sys.argv[2]
 else:
     jeedomIP = "localhost"
 
 # jeedomApiKey=${3}
-if len(sys.argv) > 5:
-    jeedomApiKey = sys.argv[5]
+if len(sys.argv) > 3:
+    jeedomApiKey = sys.argv[3]
 else:
     jeedomApiKey = "jeedomApiKey"
 
 
 jeedomCmd = "http://" + jeedomIP + "/core/api/jeeApi.php?apikey=" + jeedomApiKey + '&type=wemo&value='
+logger.info('Jeedom callback cmd %s', jeedomCmd)
 
 
-time_start = time()
-print('Server started at ', strftime("%a, %d %b %Y %H:%M:%S +0000", localtime(time_start)), 'listening on port ', PORT)  
-logger.info('Server started at %s listening on port %s',strftime("%a, %d %b %Y %H:%M:%S +0000", localtime(time_start)), PORT)
-
-
-'''
-def on_switch(switch):
-    print "Switch found!", switch.name
-
-def on_motion(motion):
-    print "Motion found!", motion.name
-'''    
+#time_start = time()
+#print('Server started at ', strftime("%a, %d %b %Y %H:%M:%S +0000", localtime(time_start)), 'listening on port ', PORT)  
+#logger.info('Server started at %s listening on port %s',strftime("%a, %d %b %Y %H:%M:%S +0000", localtime(time_start)), PORT)
 
 
 def event(self, _type, value):
     global logger
-    logger.info('event arggument = %s',locals().keys())
+    logger.info('event argument = %s',locals().keys())
     try:
         logger.info('event for device %s with type = %s value %s', self.serialnumber, _type, value)
-        subprocess.Popen(['/usr/bin/php',jeeWemo,'serialnumber='+self.serialnumber,'state=' + value[0]])
-        value = '{"logicalAddress":"' + self.serialnumber + '","state":"'.value[0]."}'
+        result = self.parse_insight_params(value)
+        #subprocess.Popen(['/usr/bin/php',jeeWemo,'serialNumber='+self.serialnumber,'state=' + value[0]])
+        value = '{"logicalAddress":"' + self.serialnumber + '","state":"' + value[0] +'"}'
+        value = '{"logicalAddress":"' + self.serialnumber + '","state":"' + result.state +'"}'
+        urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
+        value = '{"logicalAddress":"' + self.serialnumber + '","currentPower":"' + result.currentpower +'"}'
         urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
     except:
         logger.info('bug exception raised in event for device ')
@@ -92,12 +88,13 @@ SUBSCRIPTION_REGISTRY.start()
 for device in devices:
     state = str(device.get_state(True))
     logger.info('state = %s', state)
-    serialnumber = device.serialnumber
-    logger.info("serialnumber = %s", serialnumber)
-    subprocess.Popen(['/usr/bin/php',jeeWemo,'serialnumber='+serialnumber,'state='+state])
-    value = '{"logicalAddress":"' + self.serialnumber + '","state":"'.state."}'
+    serialNumber = device.serialnumber
+    logger.info("serialNumber = %s", serialNumber)
+    #subprocess.Popen(['/usr/bin/php',jeeWemo,'serialnumber='+serialnumber,'state='+state])
+    value = '{"logicalAddress":"' + serialNumber + '","state":"' + state +'"}'
     urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
-    #print "{} state is {state}".format(sender.serialnumber, state="on" if kwargs.get('state') else "off")
+    value = '{"logicalAddress":"' + serialNumber + '","currentPower":"' + device.current_power +'"}'
+    urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
     SUBSCRIPTION_REGISTRY.register(device)
     SUBSCRIPTION_REGISTRY.on(device, 'BinaryState', event) 
     SUBSCRIPTION_REGISTRY.on(device, 'EnergyPerUnitCost', event)
@@ -126,6 +123,7 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         self.logger.debug('start handle()')
+        global devices
         
         data = str(self.request.recv(1024), "utf-8").split('\n')[0]
         
@@ -177,18 +175,18 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             for device in devices:
                 state = str(device.get_state(True))
                 logger.info('state = %s', state)
-                serialnumber = device.serialnumber
-                logger.info("serialnumber = %s", serialnumber)
+                serialNumber = device.serialnumber
+                logger.info("serialNumber = %s", serialNumber)
                 name = device.name
                 logger.info("name = %s", name)
                 host = device.host
                 logger.info("host = %s", host)
-                model_name = device.model_name
-                logger.info("type = %s", model_name)
+                modelName = device.model_name
+                logger.info("modelName = %s", modelName)
                 model = device.model
                 logger.info("model = %s", model)
                 result += separator
-                result += json.dumps({'name': name, 'host': host, 'serialnumber': serialnumber, 'model_name': model_name, 'model': model, 'state': state})
+                result += json.dumps({'name': name, 'host': host, 'serialNumber': serialNumber, 'modelName': modelName, 'model': model, 'state': state})
                 separator = ','
             result += ']'    
             
@@ -200,18 +198,36 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             self.start_response('200 OK', content_type, result)
             return
         
-        if cmd == 'state':
-            result = '{"state": 0, "standby": 0}'
+        if cmd == 'blink':
+            #key = address value = serialnumber
+            for device in devices:
+                if device.serialnumber == value :
+                    device.update_insight_params()
+                    result = '{"state": '+ device.state +', "standby": '+ device.state +', "currentPower": '+ device.current_power +'}'
+                    content_type = "text/javascript"
+                    self.start_response('200 OK', content_type, result)
+                    return
+            #pas trouvé tout à 0 
+            result = '{"state": 0, "standby": 0, "currentPower": 0}'
             content_type = "text/javascript"
             self.start_response('200 OK', content_type, result)
             return
+
 
         if cmd == 'refresh':
             result = '{"state": 0, "standby": 0}'
             content_type = "text/javascript"
             self.start_response('200 OK', content_type, result)
             return
-
+        
+        if cmd.startswith('stop') or cmd == 'stop':
+            print('stop server requested')
+            #todo close socket
+            server.server_close()
+            return self.end_daemon()
+            sys.exit()
+            # return end_daemon(start_response)
+        
         self.logger.debug('cmd %s not yet implemented', cmd)
         result = '{"error": cmd not implemented}'
         content_type = "text/javascript"

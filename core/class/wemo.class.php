@@ -23,7 +23,7 @@ class wemo extends eqLogic
 {
 	/*     * *************************Attributs****************************** */
 	/* Ajouter ici toutes vos variables propre à votre classe */
-	
+
 	/*     * ***********************Methode static*************************** */
 	public static function health()
 	{
@@ -49,7 +49,7 @@ class wemo extends eqLogic
 		$return = array();
 		$return['log'] = 'wemo_update';
 		$return['progress_file'] = '/tmp/dependancy_wemo_in_progress';
-		if (exec('sudo pip list |grep ouimeaux') <> "") {
+		if (exec('sudo pip list |grep pywemo') <> "") {
 			$return['state'] = 'ok';
 		} else {
 			$return['state'] = 'nok';
@@ -205,21 +205,21 @@ class wemo extends eqLogic
 			log::add('wemo', 'debug', '___________________________');
 			log::add('wemo', 'debug', '|Equipement trouvé : ' . $device->serialnumber);
 			log::add('wemo', 'debug', '|__________________________');
-			self::saveEquipment($device->name, $device->host, $device->serialnumber, $device->model, $device->model_name, $device->state);
+			self::saveEquipment($device->name, $device->host, $device->serialnumber, $device->model, $device->modelName, $device->state);
 			$count++;
 		}
 		log::add('wemo', 'info', '******** Fin du scan wemo - nombre d\'équipements trouvés = ' . $count . ' ********');
 	}
 
-	public static function saveEquipment($name, $host, $serialNumber, $model, $model_name, $status)
+	public static function saveEquipment($name, $host, $serialNumber, $model, $modelName, $status)
 	{
 		log::add('wemo', 'debug', '  Début saveEquipment =' . $host);
 		$name = init('name', $name);
 		$host = init('host', $host);
 		$serialNumber = init('serialNumber', $serialNumber);
 		$model = init('model', $model);
-		$type = init('model_name', $model_name);
-		// $id = $model.'-'.$name.'-'.$host.'-'.$serialNumber.'-'.$model_name;
+		$type = init('modelName', $modelName);
+		// $id = $model.'-'.$name.'-'.$host.'-'.$serialNumber.'-'.$modelName;
 		$id = $serialNumber;
 		//log::add('wemo', 'debug', '  Adresse logique de l\'équipement détecté : ' . $id);
 		$elogic = self::byLogicalId($id, 'wemo');
@@ -242,8 +242,8 @@ class wemo extends eqLogic
 				$elogic->setConfiguration('model', $model);
 				$save = true;
 			}
-			if ($elogic->getConfiguration('model_name', '') != $model_name) {
-				$elogic->setConfiguration('model_name', $model_name);
+			if ($elogic->getConfiguration('modelName', '') != $modelName) {
+				$elogic->setConfiguration('modelName', $modelName);
 				$save = true;
 			}
 			$statusCmd = $elogic->getCmd(null, 'status');
@@ -272,7 +272,7 @@ class wemo extends eqLogic
 			$equipment->setConfiguration('host', $host);
 			$equipment->setConfiguration('serialNumber', $serialNumber);
 			$equipment->setConfiguration('model', $model);
-			$equipment->setConfiguration('model_name', $model_name);
+			$equipment->setConfiguration('modelName', $modelName);
 			$name = $model . ' - ' . $name;
 			$newName = $name;
 			log::add('wemo', 'debug', '  Choix a priori du nom de cet équipement :' . $name);
@@ -324,14 +324,13 @@ class wemo extends eqLogic
                 $cmd = $eqLogic->getCmd(null, $key);
                 if (is_object($cmd)) {
                     if ($key == 'status') {
-                        $value = self::convertStatus($value);
+                        //$value = self::convertStatus($value);
 					}
 					$eqLogic->refreshWidget();	
+				
 				} else {
-					//pas de changement de valeur, on ne fait rien
+					log::add('wemo', 'warning', 'Cmd not found for the received frame for: ' . $eqLogic->getName() . ' - ' . $key . '=' . $value);
 				}
-			} else {
-				log::add('wemo', 'warning', 'Cmd not found for the received frame for: ' . $eqLogic->getName() . ' - ' . $key . '=' . $value);
 			}
 		}
 	}
@@ -354,7 +353,7 @@ class wemo extends eqLogic
 		$cmd->setSubType('other');
 		$cmd->save();
 
-		if (in_array($this->getConfiguration('model_name'), array('Switch', 'Insight', 'Lightswitch'))) {
+		if (in_array($this->getConfiguration('modelName'), array('Switch', 'Insight', 'Lightswitch'))) {
 			$cmd = $this->getCmd(null, 'state');
         	if (! is_object($cmd)) {
 				$cmd = new wemoCmd();
@@ -424,7 +423,7 @@ class wemo extends eqLogic
 			$cmd->setSubType('other');
 			$cmd->save();
 
-			if ($this->getConfiguration('model_name') == "Insight") {
+			if ($this->getConfiguration('modelName') == "Insight") {
 				$cmd = $this->getCmd(null, 'currentPower');
 				if (! is_object($cmd)) {
 					$cmd = new wemoCmd();
@@ -438,7 +437,7 @@ class wemo extends eqLogic
 				$cmd->setSubType('numeric');
 				$cmd->save();
 			}
-		} elseif (in_array($this->getConfiguration('model_name'), array('Motion'))) {
+		} elseif (in_array($this->getConfiguration('modelName'), array('Motion'))) {
 			$cmd = $this->getCmd(null, 'state');
         	if (! is_object($cmd)) {
 				$cmd = new wemoCmd();
@@ -534,5 +533,3 @@ class wemoCmd extends cmd
 
 	/*     * **********************Getteur Setteur*************************** */
 }
-
-?>
