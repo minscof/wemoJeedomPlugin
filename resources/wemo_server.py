@@ -23,13 +23,6 @@ NOOP = lambda *x: None
 import socketserver
 
 
-if os.path.isfile('/usr/share/nginx/www/jeedom/plugins/wemo/core/php/jeeWemo.php') :
-    jeeWemo = '/usr/share/nginx/www/jeedom/plugins/wemo/core/php/jeeWemo.php'
-elif os.path.isfile('/var/www/html/plugins/wemo/core/php/jeeWemo.php') :
-    jeeWemo = '/var/www/html/plugins/wemo/core/php/jeeWemo.php'
-else :
-    jeeWemo = '/var/www/plugins/wemo/core/php/jeeWemo.php'
-
 #level = logging.DEBUG
 #if getattr(args, 'debug', False):
 #    level = logging.DEBUG
@@ -56,7 +49,7 @@ else:
 
 
 jeedomCmd = "http://" + jeedomIP + "/core/api/jeeApi.php?apikey=" + jeedomApiKey + '&type=wemo&value='
-logger.info('Jeedom callback cmd %s', jeedomCmd)
+#logger.debug('Jeedom callback cmd %s', jeedomCmd)
 
 
 #time_start = time()
@@ -72,6 +65,8 @@ def _standby(state):
 
 def parse_insight_params(params):
         """Parse the Insight parameters."""
+        #global logger
+        #logger.debug('______parse %s',params)
         (
             state,  # 0 if off, 1 if on, 8 if on but load is off
             lastchange,
@@ -84,6 +79,7 @@ def parse_insight_params(params):
             todaymw,
             totalmw
         ) = params.split('|')
+        state = int(state)
         return {'status': _status(state),
                 'standby' : _standby(state),
                 'lastchange': datetime.fromtimestamp(int(lastchange)),
@@ -103,13 +99,8 @@ def event(self, _type, value):
         logger.info('event for device %s with type = %s value %s', self.serialnumber, _type, value)
         if _type == 'BinaryState':
             result = parse_insight_params(value)
-            #subprocess.Popen(['/usr/bin/php',jeeWemo,'serialNumber='+self.serialnumber,'state=' + value[0]])
-            value = '{"logicalAddress":"' + self.serialnumber + '","status":"' + result['status'] +'"}'
-            urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
-            value = '{"logicalAddress":"' + self.serialnumber + '","standby":"' + result['standby'] +'"}'
-            urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
-            value = '{"logicalAddress":"' + self.serialnumber + '","currentPower":"' + result['currentpower'] +'"}'
-            urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
+            data = '{"logicalAddress": "' + self.serialnumber + '", "status": ' + result['status'] + ', "standby": ' + result['standby'] + ', "currentPower": ' + result['currentpower'] +'}'
+            urllib.request.urlopen(jeedomCmd + urllib.parse.quote(data)).read()
     except:
         logger.info('********  bug exception raised in event for device ')
         logger.info('bug in event for device  with type = %s value %s', _type, value)
@@ -121,16 +112,11 @@ SUBSCRIPTION_REGISTRY = pywemo.SubscriptionRegistry()
 SUBSCRIPTION_REGISTRY.start()
 
 for device in devices:
-    state = str(device.get_state(True))
-    logger.info('state = %s', state)
+    state = device.get_state(True)
+    logger.info('state = %s', str(state))
     serialNumber = device.serialnumber
     logger.info("serialNumber = %s", serialNumber)
-    #subprocess.Popen(['/usr/bin/php',jeeWemo,'serialnumber='+serialnumber,'state='+state])
-    value = '{"logicalAddress":"' + serialNumber + '","status":"' + _status(state) +'"}'
-    urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
-    value = '{"logicalAddress":"' + serialNumber + '","standby":"' + _standby(state) +'"}'
-    urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
-    value = '{"logicalAddress":"' + serialNumber + '","currentPower":"' + str(device.current_power) +'"}'
+    value = '{"logicalAddress": "' + serialNumber + '", "status": ' + _status(state) + ', "standby": ' + _standby(state) + ', "currentPower": ' + str(device.current_power) +'}'
     urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
     SUBSCRIPTION_REGISTRY.register(device)
     SUBSCRIPTION_REGISTRY.on(device, 'BinaryState', event) 
@@ -210,8 +196,8 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             result = '['
             separator = ''
             for device in devices:
-                state = str(device.get_state(True))
-                logger.info('state = %s', state)
+                state = device.get_state(True)
+                logger.info('state = %s', str(state))
                 serialNumber = device.serialnumber
                 logger.info("serialNumber = %s", serialNumber)
                 name = device.name
@@ -301,7 +287,8 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             print('stop server requested')
             #todo close socket
             server.server_close()
-            sys.exit()
+            #sys.exit()
+            os._exit(1)
             # return end_daemon(start_response)
         
         self.logger.debug('cmd %s not yet implemented', cmd)
@@ -363,7 +350,6 @@ class wemoServer(socketserver.TCPServer):
         self.logger.debug('shutdown()')
  
 
-
 try:
     address = (HOST, PORT) 
     server = wemoServer(address, jeedomRequestHandler)
@@ -374,4 +360,5 @@ try:
     logger.info('Server ended')
 except (KeyboardInterrupt, SystemExit):
     logger.info('Server ended via ctrl+C')
-    sys.exit(0)
+    #sys.exit(0)
+    os._exit(2)

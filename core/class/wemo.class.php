@@ -325,22 +325,28 @@ class wemo extends eqLogic
                 log::add('wemo', 'warning', '  Evénement reçu pour un équipement : ' . $event["logicalAddress"] . ' inexistant : abandon de l\'événement. Vérifier vos équipements Wemo');
                 continue;
             }
-            
+			
+			$refresh = false;
             foreach ($event as $key => $value) {
                 if ($key == 'logicalAddress')
                     continue;
                 log::add('wemo', 'debug', '  Decoded received frame for: ' . $eqLogic->getName() . ' logicalid: ' . $eqLogic->getLogicalId() . ' - ' . $key . '=' . $value);
                 $cmd = $eqLogic->getCmd(null, $key);
                 if (is_object($cmd)) {
-                    if ($key == 'status') {
-                        //$value = self::convertStatus($value);
+                    $cmd = $this->getEqLogic()->getCmd('info', $key);
+					$value = $result->{$key};
+					if ($cmd && $cmd->getValue() != $value) {
+						$refresh = true;
+						$cmd->setValue($value);
+						$cmd->save();
+						$cmd->setCollectDate('');
+						$cmd->event($value);
 					}
-					$eqLogic->refreshWidget();	
-				
 				} else {
 					log::add('wemo', 'warning', 'Cmd not found for the received frame for: ' . $eqLogic->getName() . ' - ' . $key . '=' . $value);
 				}
 			}
+			if ($refresh) $eqLogic->refreshWidget();
 		}
 	}
 
@@ -528,11 +534,13 @@ class wemoCmd extends cmd
 		} else {
 			log::add('wemo', 'debug', 'Exécution de la commande  ' . $this->getConfiguration('request') . ' terminée ' . $file);
 			//todo analyse result
+			$refresh = false;
 			if ( in_array($this->getConfiguration('request'),array('refresh','blink'))) {
 				$result = json_decode($file);
 				$cmd = $this->getEqLogic()->getCmd('info', 'status');
 				$value = $result->{'status'};
 				if ($cmd && $cmd->getValue() != $value) {
+					$refresh = true;
 					$cmd->setValue($value);
 					$cmd->save();
 					$cmd->setCollectDate('');
@@ -541,6 +549,7 @@ class wemoCmd extends cmd
 				$cmd = $this->getEqLogic()->getCmd('info', 'standby');
 				$value = $result->{'standby'};
 				if ($cmd && $cmd->getValue() != $value) {
+					$refresh = true;
 					$cmd->setValue($value);
 					$cmd->save();
 					$cmd->setCollectDate('');
@@ -549,12 +558,14 @@ class wemoCmd extends cmd
 				$cmd = $this->getEqLogic()->getCmd('info', 'currentPower');
 				$value = $result->{'currentPower'};
 				if ($cmd && $cmd->getValue() != $value) {
+					$refresh = true;
 					$cmd->setValue($value);
 					$cmd->save();
 					$cmd->setCollectDate('');
 					$cmd->event($value);
 				}
 			}
+			if ($refresh) $eqLogic->refreshWidget();
 		}
 		return false;
 	}
