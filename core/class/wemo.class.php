@@ -419,15 +419,15 @@ class wemo extends eqLogic
 			$cmd->setDisplay('generic_type', 'OFF');
 			$cmd->save();
 
-			$cmd = $this->getCmd(null, 'blink');
+			$cmd = $this->getCmd(null, 'toggle');
         	if (! is_object($cmd)) {
 				$cmd = new wemoCmd();
-				$cmd->setLogicalId('blink');
+				$cmd->setLogicalId('toggle');
 				$cmd->setIsVisible(1);
 			}
-			$cmd->setName(__('Clignote', __FILE__));
+			$cmd->setName(__('Inverser', __FILE__));
 			$cmd->setEqLogic_id($this->getId());
-			$cmd->setConfiguration('request', 'blink');
+			$cmd->setConfiguration('request', 'toggle');
 			$cmd->setType('action');
 			$cmd->setSubType('other');
 			$cmd->save();

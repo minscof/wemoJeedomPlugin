@@ -235,10 +235,11 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             self.start_response('200 OK', content_type, result)
             return
         
-        if cmd == 'blink':
+        if cmd == 'toggle':
             #key = address value = serialnumber
             for device in devices:
                 if device.serialnumber == value :
+                    device.toggle()
                     device.update_insight_params()
                     result = '{"status": '+ _status(device.get_state()) +', "standby": '+ _standby(device.get_state()) +', "currentPower": '+ str(device.current_power) +'}'
                     content_type = "text/javascript"
@@ -250,6 +251,37 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             self.start_response('200 OK', content_type, result)
             return
 
+        if cmd == 'on':
+            #key = address value = serialnumber
+            for device in devices:
+                if device.serialnumber == value :
+                    device.on()
+                    device.update_insight_params()
+                    result = '{"status": '+ _status(device.get_state()) +', "standby": '+ _standby(device.get_state()) +', "currentPower": '+ str(device.current_power) +'}'
+                    content_type = "text/javascript"
+                    self.start_response('200 OK', content_type, result)
+                    return
+            #pas trouvé tout à 0 
+            result = '{"status": 0, "standby": 0, "currentPower": 0}'
+            content_type = "text/javascript"
+            self.start_response('200 OK', content_type, result)
+            return
+        
+        if cmd == 'off':
+            #key = address value = serialnumber
+            for device in devices:
+                if device.serialnumber == value :
+                    device.off()
+                    device.update_insight_params()
+                    result = '{"status": '+ _status(device.get_state()) +', "standby": '+ _standby(device.get_state()) +', "currentPower": '+ str(device.current_power) +'}'
+                    content_type = "text/javascript"
+                    self.start_response('200 OK', content_type, result)
+                    return
+            #pas trouvé tout à 0 
+            result = '{"status": 0, "standby": 0, "currentPower": 0}'
+            content_type = "text/javascript"
+            self.start_response('200 OK', content_type, result)
+            return
 
         if cmd == 'refresh':
             for device in devices:

@@ -37,7 +37,7 @@ $message = '';
 foreach ($_GET as $key => $value) {
     $message .= $key . '=>' . $value . ' ';
 }
-log::add('wemo', 'event', 'Evenement : ' . $message);
+log::add('wemo', 'event', 'Evenement  à supprimer : ' . $message);
 //log::add('wemo', 'event', 'tableau 2: ' . json_encode($values_arr));
 $wemo_all = eqLogic::byTypeAndSearhConfiguration('wemo', $_GET['serialNumber']);
 if (count($wemo_all) == 0) {
@@ -46,8 +46,8 @@ if (count($wemo_all) == 0) {
 }
 foreach ($wemo_all as $wemo) {
     foreach ($wemo->getCmd('info') as $cmd) {
-        $cmd->event($_GET['state']);
-        $cmd->setValue($_GET['state']);
+        $cmd->event($_GET['status']);
+        $cmd->setValue($_GET['status']);
         $cmd->save();
     }
 }
