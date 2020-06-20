@@ -34,6 +34,34 @@ level = logging.DEBUG
 #    level = logging.DEBUG
 logging.basicConfig(level=level)
 
+if len(sys.argv) > 1:
+    PORT = int(sys.argv[1])
+    HOST, PORT = "localhost", int(sys.argv[1])
+else:
+    PORT = 5000
+    HOST, PORT = "localhost", 5000
+
+# jeedomIP=${2}
+if len(sys.argv) > 4:
+    jeedomIP = sys.argv[4]
+else:
+    jeedomIP = "localhost"
+
+# jeedomApiKey=${3}
+if len(sys.argv) > 5:
+    jeedomApiKey = sys.argv[5]
+else:
+    jeedomApiKey = "jeedomApiKey"
+
+
+jeedomCmd = "http://" + jeedomIP + "/core/api/jeeApi.php?apikey=" + jeedomApiKey + '&type=wemo&value='
+
+
+time_start = time()
+print('Server started at ', strftime("%a, %d %b %Y %H:%M:%S +0000", localtime(time_start)), 'listening on port ', PORT)  
+logger.info('Server started at %s listening on port %s',strftime("%a, %d %b %Y %H:%M:%S +0000", localtime(time_start)), PORT)
+
+
 '''
 def on_switch(switch):
     print "Switch found!", switch.name
@@ -48,7 +76,9 @@ def event(self, _type, value):
     logger.info('event arggument = %s',locals().keys())
     try:
         logger.info('event for device %s with type = %s value %s', self.serialnumber, _type, value)
-        subprocess.Popen(['/usr/bin/php',jeeWemo,'serialnumber='+self.serialnumber,'state='+value[0]])
+        subprocess.Popen(['/usr/bin/php',jeeWemo,'serialnumber='+self.serialnumber,'state=' + value[0]])
+        value = '{"logicalAddress":"' + self.serialnumber + '","state":"'.value[0]."}'
+        urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
     except:
         logger.info('bug exception raised in event for device ')
         logger.info('bug in event for device  with type = %s value %s', _type, value)
@@ -65,6 +95,8 @@ for device in devices:
     serialnumber = device.serialnumber
     logger.info("serialnumber = %s", serialnumber)
     subprocess.Popen(['/usr/bin/php',jeeWemo,'serialnumber='+serialnumber,'state='+state])
+    value = '{"logicalAddress":"' + self.serialnumber + '","state":"'.state."}'
+    urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
     #print "{} state is {state}".format(sender.serialnumber, state="on" if kwargs.get('state') else "off")
     SUBSCRIPTION_REGISTRY.register(device)
     SUBSCRIPTION_REGISTRY.on(device, 'BinaryState', event) 

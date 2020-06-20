@@ -18,31 +18,28 @@
 
 /* * ***************************Includes********************************* */
 require_once dirname(__FILE__) . '/../../../../core/php/core.inc.php';
-if (!class_exists('Pest')) {
-	include dirname(__FILE__) . '/../../3rdparty/pest/Pest.php';
-}
 
 class wemo extends eqLogic
 {
 	/*     * *************************Attributs****************************** */
-	private static $_wemoUpdatetime = array();
-
+	/* Ajouter ici toutes vos variables propre à votre classe */
+	
 	/*     * ***********************Methode static*************************** */
 	public static function health()
 	{
 		$return = array();
-		$statusDeamon = false;
-		$statusDeamon = (wemo::deamon_info()['state'] == 'ok' ? true : false);
-		$libVer = config::byKey('DeamonVer', 'wemo');
+		$statusDaemon = false;
+		$statusDaemon = (wemo::deamon_info()['state'] == 'ok' ? true : false);
+		$libVer = config::byKey('DaemonVer', 'wemo');
 		if ($libVer == '') {
 			$libVer = '{{inconnue}}';
 		}
 
 		$return[] = array(
-			'test' => __('Deamon', __FILE__),
-			'result' => ($statusDeamon) ? $libVer : __('NOK', __FILE__),
-			'advice' => ($statusDeamon) ? '' : __('Indique si la Deamon est opérationel avec sa version', __FILE__),
-			'state' => $statusDeamon
+			'test' => __('Daemon', __FILE__),
+			'result' => ($statusDaemon) ? $libVer : __('NOK', __FILE__),
+			'advice' => ($statusDaemon) ? '' : __('Indique si la Daemon est opérationel avec sa version', __FILE__),
+			'state' => $statusDaemon
 		);
 		return $return;
 	}
@@ -62,7 +59,7 @@ class wemo extends eqLogic
 	public static function dependancy_install()
 	{
 		log::remove('wemo_update');
-		if (exec('sudo pip list |grep ouimeaux') <> "") {
+		if (exec('sudo pip list |grep pywemo') <> "") {
 			$cmd = 'sudo /bin/bash ' . dirname(__FILE__) . '/../../resources/upgrade.sh';
 		} else {
 			$cmd = 'sudo /bin/bash ' . dirname(__FILE__) . '/../../resources/install.sh';
@@ -88,19 +85,24 @@ class wemo extends eqLogic
 		$shell = realpath(dirname(__FILE__)) . '/../../resources/wemo_server.py';
 		$string = file_get_contents($shell);
 		preg_match("/__version__='([0-9.]+)/mis", $string, $matches);
-		config::save('DeamonVer', 'Version ' . $matches[1],  'wemo');
+		config::save('DaemonVer', 'Version ' . $matches[1],  'wemo');
 		$deamon_info = self::deamon_info();
 		if ($deamon_info['launchable'] != 'ok') {
 			throw new Exception(__('Veuillez vérifier la configuration', __FILE__));
 		}
-		log::remove('wemo');
-
-		log::add('wemo', 'info', 'Lancement démon wemo : ' . $shell);
-		$result = exec($shell . ' >> ' . log::getPathToLog('wemo') . ' 2>&1 &');
+		log::add('wemo', 'info', 'Lancement démon wemo : ' . $matches[1]);
+		log::add('wemo', 'debug', 'Nom complet du démon wemo : ' . $shell);
+		//$result = exec($shell . ' >> ' . log::getPathToLog('wemo') . ' 2>&1 &');
+		// TODO il faut lancer le serveur sur la machine Ip définie, pas uniquement en local
+        $cmd = 'nice -n 19 /usr/bin/python3 ' . $shell .' '. config::byKey('wemoPort', 'wemo', '5000') . ' ' . config::byKey('internalAddr', 'core', 'xxx.yyy.zzz.vvvv') . ' ' . config::byKey('api', 'wemo', 'xxxxxxxxx');
+        // le sudo semble poser pbm
+        $result = exec('nohup sudo ' . $cmd . ' >> ' . log::getPathToLog('wemo_log') . ' 2>&1 &');
+        
 		if (strpos(strtolower($result), 'error') !== false || strpos(strtolower($result), 'traceback') !== false) {
-			log::add('wemo', 'error', $result);
+			log::add('wemo', 'error', 'échec lancement du daemon :' . $result);
 			return false;
 		}
+
 		$i = 0;
 		while ($i < 30) {
 			$deamon_info = self::deamon_info();
@@ -111,19 +113,30 @@ class wemo extends eqLogic
 			$i++;
 		}
 		if ($i >= 30) {
-			log::add('wemo', 'error', 'Impossible de lancer le démon Wemo, vérifiez le log wemo', 'unableStartDeamon');
+			log::add('wemo', 'error', 'Impossible de lancer le démon Wemo, vérifiez le log wemo', 'unableStartDaemon');
 			return false;
 		}
-		message::removeAll('wemo', 'unableStartDeamon');
-		log::add('wemo', 'info', 'Démon wemo lancé ' . matches[1]);
+		message::removeAll('wemo', 'unableStartDaemon');
+		log::add('wemo', 'info', 'Démon wemo lancé version =' . $matches[1]);
 		return true;
 	}
 
 	public static function deamon_stop()
 	{
+		log::add('wemo', 'info', 'Arrêt demandé du service wemo');
 		if (!self::deamonRunning()) {
 			return true;
 		}
+		$opts = array(
+            'http' => array(
+                'method' => "GET",
+                'header' => "Accept-language: en\r\n" . "Cookie: foo=bar\r\n"
+            )
+		);
+		$context = stream_context_create($opts);
+        // pour éviter des logs intempestifs quand on cherche à arrêter un serveur déjà arrêté.. @
+        @$file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', 'localhost') . ':' . config::byKey('wemoPort', 'wemo', '5000') . '/stop', false, $context);
+        log::add('wemo', 'info', 'Arrêt du service wemo');
 		$pid = exec("ps -eo pid,command | grep 'wemo_server.py' | grep -v grep | awk '{print $1}'");
 		exec('kill ' . $pid);
 		$check = self::deamonRunning();
@@ -152,6 +165,17 @@ class wemo extends eqLogic
 
 		return self::deamonRunning();
 	}
+
+	public static function deamonRunning()
+	{
+
+		$result = exec("ps -eo pid,command | grep 'wemo_server.py' | grep -v grep | awk '{print $1}'");
+		if ($result == 0) {
+			return false;
+		}
+		return true;
+	}
+
 
 	public static function cronHourly()
 	{
@@ -265,14 +289,51 @@ class wemo extends eqLogic
 		}
 	}
 
-	public static function deamonRunning()
-	{
+	
+	public static function event()
+    {
+        $value = init('value');
+        log::add('wemo', 'debug', '-> Received : ' . $value);
+        
+        $event = json_decode($value, true);
+        // $a = print_r($event,true);
+        // log::add('wemo','debug','Dump event='.$a);
+        $changed = false;
+        if (! isset($event["logicalAddress"]) && ! isset($event["scan"])) {
+            log::add('wemo', 'warning', '  Evénement reçu sans information nommée logicalAddress ni scan. Impossible de le traiter : ' . $value);
+            return;
+        }
 
-		$result = exec("ps -eo pid,command | grep 'wemo_server.py' | grep -v grep | awk '{print $1}'");
-		if ($result == 0) {
-			return false;
+        if (isset($events["scan"])) {
+            $events = $event["scan"];
+        } else {
+            $events = '{"1":'.$event.'}';
+        }
+        
+        foreach ($events as $event) {
+
+            if (! $eqLogic = eqLogic::byLogicalId($event["logicalAddress"], 'wemo')) {
+                log::add('wemo', 'warning', '  Evénement reçu pour un équipement : ' . $event["logicalAddress"] . ' inexistant : abandon de l\'événement. Vérifier vos équipements Wemo');
+                continue;
+            }
+            
+            foreach ($event as $key => $value) {
+                if ($key == 'logicalAddress')
+                    continue;
+                log::add('wemo', 'debug', '  Decoded received frame for: ' . $eqLogic->getName() . ' logicalid: ' . $eqLogic->getLogicalId() . ' - ' . $key . '=' . $value);
+                $cmd = $eqLogic->getCmd(null, $key);
+                if (is_object($cmd)) {
+                    if ($key == 'status') {
+                        $value = self::convertStatus($value);
+					}
+					$eqLogic->refreshWidget();	
+				} else {
+					//pas de changement de valeur, on ne fait rien
+				}
+			} else {
+				log::add('wemo', 'warning', 'Cmd not found for the received frame for: ' . $eqLogic->getName() . ' - ' . $key . '=' . $value);
+			}
 		}
-		return true;
 	}
 
 
@@ -410,7 +471,7 @@ class wemoCmd extends cmd
 
 
 
-	public function execute($_options = null)
+	public function execute($_options = array())
 	{
 
 		if (empty($_options)) {
@@ -473,3 +534,5 @@ class wemoCmd extends cmd
 
 	/*     * **********************Getteur Setteur*************************** */
 }
+
+?>
