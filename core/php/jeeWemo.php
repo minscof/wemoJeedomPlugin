@@ -39,7 +39,7 @@ foreach ($_GET as $key => $value) {
 }
 log::add('wemo', 'event', 'Evenement : ' . $message);
 //log::add('wemo', 'event', 'tableau 2: ' . json_encode($values_arr));
-$wemo_all = eqLogic::byTypeAndSearhConfiguration('wemo', $_GET['serialnumber']);
+$wemo_all = eqLogic::byTypeAndSearhConfiguration('wemo', $_GET['serialNumber']);
 if (count($wemo_all) == 0) {
     log::add('wemo', 'warning', 'Event reçu mais impossible de trouver le device ' . $message, 'config');
     return;

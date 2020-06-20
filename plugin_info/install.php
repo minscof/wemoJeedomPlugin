@@ -18,7 +18,7 @@
 
 function wemo_install() {
     exec('sudo apt-get install python-pip libevent-dev python-all-dev ');
-    exec('sudo apt-get install ouimeaux';
+    exec('sudo apt-get install pywemo';
     exec('sudo apt-get remove python-pip libevent-dev python-all-dev ');
 }
 
@@ -30,7 +30,7 @@ function wemo_update() {
 
 function wemo_install() {
     exec('sudo apt-get install python-pip libevent-dev python-all-dev ');
-    exec('sudo apt-get uninstall ouimeaux';
+    exec('sudo apt-get uninstall pywemo';
     exec('sudo apt-get remove python-pip libevent-dev python-all-dev ');
 }
 

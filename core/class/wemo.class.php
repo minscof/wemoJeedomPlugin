@@ -203,9 +203,9 @@ class wemo extends eqLogic
 
 		foreach ($devices as $device) {
 			log::add('wemo', 'debug', '___________________________');
-			log::add('wemo', 'debug', '|Equipement trouvé : ' . $device->serialnumber);
+			log::add('wemo', 'debug', '|Equipement trouvé : ' . $device->serialNumber);
 			log::add('wemo', 'debug', '|__________________________');
-			self::saveEquipment($device->name, $device->host, $device->serialnumber, $device->model, $device->modelName, $device->state);
+			self::saveEquipment($device->name, $device->host, $device->serialNumber, $device->model, $device->modelName, $device->state);
 			$count++;
 		}
 		log::add('wemo', 'info', '******** Fin du scan wemo - nombre d\'équipements trouvés = ' . $count . ' ********');
@@ -339,7 +339,7 @@ class wemo extends eqLogic
 	/* fonction appelée après la fin de la séquence de sauvegarde */
 	public function postSave()
 	{
-		log::add('wemo', 'debug', ' Postsave id equipment : ' . $this->getId());
+		log::add('wemo', 'debug', '  Postsave id equipment : ' . $this->getId());
 		$cmd = $this->getCmd(null, 'refresh');
 		if (! is_object($cmd)) {
 			$cmd = new wemoCmd();

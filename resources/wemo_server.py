@@ -9,6 +9,7 @@ import json
 
 import pywemo
 import urllib.request, urllib.error, urllib.parse
+from datetime import datetime
 
 __version__='0.92'
 logging.basicConfig(level=logging.DEBUG,format='%(asctime)-15s - %(name)s: %(message)s')
@@ -62,21 +63,46 @@ logger.info('Jeedom callback cmd %s', jeedomCmd)
 #print('Server started at ', strftime("%a, %d %b %Y %H:%M:%S +0000", localtime(time_start)), 'listening on port ', PORT)  
 #logger.info('Server started at %s listening on port %s',strftime("%a, %d %b %Y %H:%M:%S +0000", localtime(time_start)), PORT)
 
+def parse_insight_params(params):
+        """Parse the Insight parameters."""
+        (
+            state,  # 0 if off, 1 if on, 8 if on but load is off
+            lastchange,
+            onfor,  # seconds
+            ontoday,  # seconds
+            ontotal,  # seconds
+            timeperiod,  # pylint: disable=unused-variable
+            wifipower,  # This one is always 41 for me; what is it?
+            currentmw,
+            todaymw,
+            totalmw
+        ) = params.split('|')
+        return {'state': state,
+                'lastchange': datetime.fromtimestamp(int(lastchange)),
+                'onfor': int(onfor),
+                'ontoday': int(ontoday),
+                'ontotal': int(ontotal),
+                'wifipower' : int(wifipower),
+                'todaymw': int(float(todaymw)),
+                'totalmw': int(float(totalmw)),
+                'currentpower': int(float(currentmw))}
+
 
 def event(self, _type, value):
     global logger
     logger.info('event argument = %s',locals().keys())
     try:
         logger.info('event for device %s with type = %s value %s', self.serialnumber, _type, value)
-        result = self.parse_insight_params(value)
-        #subprocess.Popen(['/usr/bin/php',jeeWemo,'serialNumber='+self.serialnumber,'state=' + value[0]])
-        value = '{"logicalAddress":"' + self.serialnumber + '","state":"' + value[0] +'"}'
-        value = '{"logicalAddress":"' + self.serialnumber + '","state":"' + result.state +'"}'
-        urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
-        value = '{"logicalAddress":"' + self.serialnumber + '","currentPower":"' + result.currentpower +'"}'
-        urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
+        if _type == 'BinaryState':
+            result = parse_insight_params(value)
+            #subprocess.Popen(['/usr/bin/php',jeeWemo,'serialNumber='+self.serialnumber,'state=' + value[0]])
+            value = '{"logicalAddress":"' + self.serialnumber + '","state":"' + value[0] +'"}'
+            value = '{"logicalAddress":"' + self.serialnumber + '","state":"' + result['state'] +'"}'
+            urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
+            value = '{"logicalAddress":"' + self.serialnumber + '","currentPower":"' + str(result['currentpower']) +'"}'
+            urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
     except:
-        logger.info('bug exception raised in event for device ')
+        logger.info('********  bug exception raised in event for device ')
         logger.info('bug in event for device  with type = %s value %s', _type, value)
  
 
@@ -93,7 +119,7 @@ for device in devices:
     #subprocess.Popen(['/usr/bin/php',jeeWemo,'serialnumber='+serialnumber,'state='+state])
     value = '{"logicalAddress":"' + serialNumber + '","state":"' + state +'"}'
     urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
-    value = '{"logicalAddress":"' + serialNumber + '","currentPower":"' + device.current_power +'"}'
+    value = '{"logicalAddress":"' + serialNumber + '","currentPower":"' + str(device.current_power) +'"}'
     urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
     SUBSCRIPTION_REGISTRY.register(device)
     SUBSCRIPTION_REGISTRY.on(device, 'BinaryState', event) 
@@ -203,7 +229,7 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             for device in devices:
                 if device.serialnumber == value :
                     device.update_insight_params()
-                    result = '{"state": '+ device.state +', "standby": '+ device.state +', "currentPower": '+ device.current_power +'}'
+                    result = '{"state": '+ device.state +', "standby": '+ device.state +', "currentPower": '+ str(device.current_power) +'}'
                     content_type = "text/javascript"
                     self.start_response('200 OK', content_type, result)
                     return
@@ -215,7 +241,15 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
 
 
         if cmd == 'refresh':
-            result = '{"state": 0, "standby": 0}'
+            for device in devices:
+                if device.serialnumber == value :
+                    device.update_insight_params()
+                    result = '{"state": '+ device.state +', "standby": '+ device.state +', "currentPower": '+ str(device.current_power) +', "wifiPower": '+ "41" +'}'
+                    content_type = "text/javascript"
+                    self.start_response('200 OK', content_type, result)
+                    return
+            #pas trouvé tout à 0 
+            result = '{"state": 0, "standby": 0, "currentPower": 0}'
             content_type = "text/javascript"
             self.start_response('200 OK', content_type, result)
             return
@@ -224,7 +258,6 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             print('stop server requested')
             #todo close socket
             server.server_close()
-            return self.end_daemon()
             sys.exit()
             # return end_daemon(start_response)
         
@@ -288,15 +321,10 @@ class wemoServer(socketserver.TCPServer):
  
 
 
-
 try:
-    # TODO: Move this to configuration
-
-    HOST = '127.0.0.1'
-    PORT = 5000
     address = (HOST, PORT) 
     server = wemoServer(address, jeedomRequestHandler)
-    ip, port = server.server_address  # what port was assigned?
+    ip, port = server.server_address 
     
     logger.info('Server on %s:%s', ip, port)
     server.serve_forever()
