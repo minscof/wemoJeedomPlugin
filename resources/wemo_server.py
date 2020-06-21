@@ -97,7 +97,7 @@ def event(self, _type, value):
     logger.info('event argument = %s',locals().keys())
     try:
         logger.info('event for device %s with type = %s value %s', self.serialnumber, _type, value)
-        logger.info("$$$$$$ $$ device = %s", json.dumps(self))
+        #logger.info("$$$$$$ $$ device = %s", json.dumps(self))
         if _type == 'BinaryState':
             params = parse_insight_params(value)
             payload = '{"logicalAddress": "' + self.serialnumber + '", "status": ' + str(params['status']) + ', "standby": ' + str(params['standby']) + ', "currentPower": ' + str(params['currentpower']) +'}'
@@ -114,7 +114,7 @@ SUBSCRIPTION_REGISTRY.start()
 
 for device in devices:
     state = device.get_state(True)
-    logger.info("$$$$$$ $$ device = %s", json.dumps(device))
+    #logger.info("$$$$$$ $$ device = %s", json.dumps(device))
     logger.info('state = %s', str(state))
     serialNumber = device.serialnumber
     logger.info("serialNumber = %s", serialNumber)
@@ -275,7 +275,7 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
             for device in devices:
                 if device.serialnumber == value :
                     device.update_insight_params()
-                    payload = '{"status": '+ _status(device.get_state()) +', "standby": '+ _standby(device.get_state()) +', "currentPower": '+ str(device.current_power) +', "wifiPower": '+ "41" +'}'
+                    payload = '{"status": '+ str(_status(device.get_state())) +', "standby": '+ str(_standby(device.get_state())) +', "currentPower": '+ str(device.current_power) +', "wifiPower": '+ "41" +'}'
                     content_type = "text/javascript"
                     self.start_response('200 OK', content_type, payload)
                     return

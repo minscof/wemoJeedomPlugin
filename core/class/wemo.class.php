@@ -97,7 +97,7 @@ class wemo extends eqLogic
 		log::add('wemo', 'debug', 'Nom complet du démon wemo : ' . $shell);
 		//$result = exec($shell . ' >> ' . log::getPathToLog('wemo') . ' 2>&1 &');
 		// TODO il faut lancer le serveur sur la machine Ip définie, pas uniquement en local
-        $cmd = 'nice -n 19 /usr/bin/python3 ' . $shell .' '. $url . ' ' . config::byKey('wemoPort', 'wemo', '5000') . ' ' . $loglevel;
+        $cmd = 'nice -n 19 /usr/bin/python3 ' . $shell .' '. $url . ' ' . config::byKey('wemoPort', 'wemo', '5000') . ' ' . $logLevel;
         // le sudo semble poser pbm
         $result = exec('nohup sudo ' . $cmd . ' >> ' . log::getPathToLog('wemo_daemon') . ' 2>&1 &');
         
@@ -502,9 +502,9 @@ class wemoCmd extends cmd
 			log::add('wemo', 'warning', 'Echec exécution d\'une commande vide');
 			return;
 		}
-		$wemo = $this->getEqLogic();
+		$eqLogic = $this->getEqLogic();
 		$action = $this->getConfiguration('request');
-		$logicalAddress = $wemo->getConfiguration('logicalAddress');
+		$logicalAddress = $eqLogic->getConfiguration('logicalAddress');
 		switch ($action) {
 			case "channel1":
 				$action = 'transmit';
@@ -528,7 +528,7 @@ class wemoCmd extends cmd
 		if (isset($_options['title'])) {
 			@$file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', 'localhost') . ':' . config::byKey('wemoPort', 'wemo', '5000') . '/' . rawurlencode($action) . '?address=' . rawurlencode($_options['title'] . '&parameter=' . rawurlencode($_options['message'])), false, $context);
 		} else {
-			@$file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', 'localhost') . ':' . config::byKey('wemoPort', 'wemo', '5000') . '/' . rawurlencode($action) . '?address=' . rawurlencode($wemo->getLogicalId()), false, $context);
+			@$file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', 'localhost') . ':' . config::byKey('wemoPort', 'wemo', '5000') . '/' . rawurlencode($action) . '?address=' . rawurlencode($eqLogic->getLogicalId()), false, $context);
 		}
 
 		if ($file === false) {
@@ -538,9 +538,9 @@ class wemoCmd extends cmd
 			log::add('wemo', 'debug', 'Exécution de la commande  ' . $this->getConfiguration('request') . ' terminée ' . $file);
 			//todo analyse result
 			$refresh = false;
-			if ( in_array($this->getConfiguration('request'),array('refresh','blink'))) {
+			if ( in_array($this->getConfiguration('request'),array('refresh','toggle'))) {
 				$result = json_decode($file);
-				$cmd = $this->getEqLogic()->getCmd('info', 'status');
+				$cmd = $eqLogic->getCmd('info', 'status');
 				$value = $result->{'status'};
 				if ($cmd && $cmd->getValue() != $value) {
 					$refresh = true;
@@ -549,7 +549,7 @@ class wemoCmd extends cmd
 					$cmd->setCollectDate('');
 					$cmd->event($value);
 				}
-				$cmd = $this->getEqLogic()->getCmd('info', 'standby');
+				$cmd = $eqLogic->getCmd('info', 'standby');
 				$value = $result->{'standby'};
 				if ($cmd && $cmd->getValue() != $value) {
 					$refresh = true;
@@ -558,7 +558,7 @@ class wemoCmd extends cmd
 					$cmd->setCollectDate('');
 					$cmd->event($value);
 				}
-				$cmd = $this->getEqLogic()->getCmd('info', 'currentPower');
+				$cmd = $eqLogic->getCmd('info', 'currentPower');
 				$value = $result->{'currentPower'};
 				if ($cmd && $cmd->getValue() != $value) {
 					$refresh = true;
@@ -570,7 +570,7 @@ class wemoCmd extends cmd
 			}
 			if ($refresh) $eqLogic->refreshWidget();
 		}
-		return false;
+		return true;
 	}
 
 	/*     * **********************Getteur Setteur*************************** */
