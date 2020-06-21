@@ -94,9 +94,17 @@ def parse_insight_params(params):
 
 def event(self, _type, value):
     global logger
-    logger.info('event argument = %s',locals().keys())
+    #logger.info('event argument = %s',locals().keys())
     try:
         logger.info('event for device %s with type = %s value %s', self.serialnumber, _type, value)
+        logger.info("$$$$$$ $$ device = %s", type(self))
+        try :
+            test = json.dumps(self)
+            logger.info("$$$$$$ $$ device = %s", test)
+        except ValueError as e:
+            logger.info("json dumps error = %s", e.msg)
+
+
         #logger.info("$$$$$$ $$ device = %s", json.dumps(self))
         if _type == 'BinaryState':
             params = parse_insight_params(value)
@@ -133,7 +141,7 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
         socketserver.BaseRequestHandler.__init__(self, request, client_address, server)
 
     def start_response(self, code, contentType, data):
-        self.logger.debug('start_response() code = %s data = %s', code, data)
+        self.logger.debug('start_response() code = %s payload = %s', code, data)
         code = "HTTP/1.1 " + code + '\r\n'
         self.request.send(code.encode())
         response_headers = {
@@ -293,6 +301,11 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
             os._exit(1)
             # return end_daemon(start_response)
         
+        if cmd == 'ping':
+            content_type = "text/html"
+            self.start_response('200 OK', content_type, "ping")
+            return
+
         self.logger.debug('cmd %s not yet implemented', cmd)
         payload = '{"error": cmd not implemented}'
         content_type = "text/javascript"

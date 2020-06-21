@@ -73,16 +73,27 @@ class wemo extends eqLogic
 		$return['log'] = 'wemo';
 		$return['state'] = 'nok';
 		$result = exec("ps -eo pid,command | grep 'wemo_server.py' | grep -v grep | awk '{print $1}'");
+		$opts = array(
+			'http' => array(
+				'method' => "GET",
+				'header' => "Accept-language: en\r\n" . "Cookie: foo=bar\r\n"
+			)
+		);
+		$context = stream_context_create($opts);
+		@$file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', 'localhost') . ':' . config::byKey('wemoPort', 'wemo', '5000') . '/ping', false, $context);
+		log::add('wemo', 'debug', 'Wemo daemon info ping : ' . $file);
 		if ($result <> 0) {
 			$return['state'] = 'ok';
 		}
 		$return['launchable'] = 'ok';
+		log::add('wemo', 'debug', 'Wemo daemon info : ' . $return['state']);
 		return $return;
 	}
 	public static function deamon_start($_debug = false)
 	{
 		self::deamon_stop();
 		$shell = realpath(dirname(__FILE__)) . '/../../resources/wemo_server.py';
+		
 		$string = file_get_contents($shell);
 		preg_match("/__version__='([0-9.]+)/mis", $string, $matches);
 		config::save('DaemonVer', 'Version ' . $matches[1],  'wemo');
@@ -97,9 +108,10 @@ class wemo extends eqLogic
 		log::add('wemo', 'debug', 'Nom complet du démon wemo : ' . $shell);
 		//$result = exec($shell . ' >> ' . log::getPathToLog('wemo') . ' 2>&1 &');
 		// TODO il faut lancer le serveur sur la machine Ip définie, pas uniquement en local
-        $cmd = 'nice -n 19 /usr/bin/python3 ' . $shell .' '. $url . ' ' . config::byKey('wemoPort', 'wemo', '5000') . ' ' . $logLevel;
-        // le sudo semble poser pbm
-        $result = exec('nohup sudo ' . $cmd . ' >> ' . log::getPathToLog('wemo_daemon') . ' 2>&1 &');
+		$cmd = 'nice -n 19 /usr/bin/python3 ' . $shell .' '. $url . ' ' . config::byKey('wemoPort', 'wemo', '5000') . ' ' . $logLevel;
+		log::add('wemo', 'debug', 'Cmd complète  : ' . $cmd);
+		// le sudo semble poser pbm
+		$result = exec('nohup ' . $cmd . ' >> ' . log::getPathToLog('wemo_daemon') . ' 2>&1 &');
         
 		if (strpos(strtolower($result), 'error') !== false || strpos(strtolower($result), 'traceback') !== false) {
 			log::add('wemo', 'error', 'échec lancement du daemon :' . $result);
@@ -533,7 +545,8 @@ class wemoCmd extends cmd
 
 		if ($file === false) {
 			$result = print_r($http_response_header,true);
-			log::add('wemo', 'warning', 'Echec exécution de la commande  ' . $this->getConfiguration('request').' code ='.$result);
+			$error = error_get_last();
+			log::add('wemo', 'warning', 'Echec exécution de la commande  ' . $this->getConfiguration('request').' code ='.$result.' error='.$error);
 		} else {
 			log::add('wemo', 'debug', 'Exécution de la commande  ' . $this->getConfiguration('request') . ' terminée ' . $file);
 			//todo analyse result
