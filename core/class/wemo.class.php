@@ -49,7 +49,7 @@ class wemo extends eqLogic
 		$return = array();
 		$return['log'] = 'wemo_update';
 		$return['progress_file'] = '/tmp/dependancy_wemo_in_progress';
-		if (exec('sudo pip list |grep pywemo') <> "") {
+		if (exec('sudo pip list | grep pywemo') <> "") {
 			$return['state'] = 'ok';
 		} else {
 			$return['state'] = 'nok';
@@ -90,13 +90,16 @@ class wemo extends eqLogic
 		if ($deamon_info['launchable'] != 'ok') {
 			throw new Exception(__('Veuillez vérifier la configuration', __FILE__));
 		}
+
+		$logLevel = log::convertLogLevel(log::getLogLevel('wemo'));
+		$url  = network::getNetworkAccess('internal').'/core/api/jeeApi.php?type=wemo&apikey=' . jeedom::getApiKey('wemo') .'&value=';
 		log::add('wemo', 'info', 'Lancement démon wemo : ' . $matches[1]);
 		log::add('wemo', 'debug', 'Nom complet du démon wemo : ' . $shell);
 		//$result = exec($shell . ' >> ' . log::getPathToLog('wemo') . ' 2>&1 &');
 		// TODO il faut lancer le serveur sur la machine Ip définie, pas uniquement en local
-        $cmd = 'nice -n 19 /usr/bin/python3 ' . $shell .' '. config::byKey('wemoPort', 'wemo', '5000') . ' ' . config::byKey('internalAddr', 'core', 'xxx.yyy.zzz.vvvv') . ' ' . config::byKey('api', 'wemo', 'xxxxxxxxx');
+        $cmd = 'nice -n 19 /usr/bin/python3 ' . $shell .' '. $url . ' ' . config::byKey('wemoPort', 'wemo', '5000') . ' ' . $loglevel;
         // le sudo semble poser pbm
-        $result = exec('nohup sudo ' . $cmd . ' >> ' . log::getPathToLog('wemo_log') . ' 2>&1 &');
+        $result = exec('nohup sudo ' . $cmd . ' >> ' . log::getPathToLog('wemo_daemon') . ' 2>&1 &');
         
 		if (strpos(strtolower($result), 'error') !== false || strpos(strtolower($result), 'traceback') !== false) {
 			log::add('wemo', 'error', 'échec lancement du daemon :' . $result);

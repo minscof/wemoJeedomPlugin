@@ -27,7 +27,7 @@ if (!isConnect('admin')) {
 				wemo}}</label>
 			<div class="col-lg-2">
 				<input class="configKey form-control" data-l1key="wemoIp"
-					value="127.0.0.1" placeholder="{{adr Ip}}" />
+					value="localhost" placeholder="{{adr Ip}}" />
 			</div>
 		</div>
 		<div class="form-group">

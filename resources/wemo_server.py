@@ -28,29 +28,29 @@ import socketserver
 #    level = logging.DEBUG
 #logging.basicConfig(level=level)
 
+# callbackUrl=${1}
 if len(sys.argv) > 1:
-    PORT = int(sys.argv[1])
-    HOST, PORT = "localhost", int(sys.argv[1])
+    callbackUrl = sys.argv[1]
+else:
+    callbackUrl = "http://localhost?payload="
+
+#logger.debug('callback Url %s', callbackUrl)
+
+# listen PORT=${2}
+if len(sys.argv) > 2:
+    PORT = int(sys.argv[2])
+    HOST, PORT = "localhost", int(sys.argv[2])
 else:
     PORT = 5000
     HOST, PORT = "localhost", 5000
 
-# jeedomIP=${2}
-if len(sys.argv) > 2:
-    jeedomIP = sys.argv[2]
-else:
-    jeedomIP = "localhost"
-
-# jeedomApiKey=${3}
+# loglevel=${3}
 if len(sys.argv) > 3:
-    jeedomApiKey = sys.argv[3]
+    loglevel = sys.argv[3]
 else:
-    jeedomApiKey = "jeedomApiKey"
+    loglevel = "info"
 
-
-jeedomCmd = "http://" + jeedomIP + "/core/api/jeeApi.php?apikey=" + jeedomApiKey + '&type=wemo&value='
-#logger.debug('Jeedom callback cmd %s', jeedomCmd)
-
+logger.debug('loglevel %s', loglevel)
 
 #time_start = time()
 #print('Server started at ', strftime("%a, %d %b %Y %H:%M:%S +0000", localtime(time_start)), 'listening on port ', PORT)  
@@ -58,10 +58,10 @@ jeedomCmd = "http://" + jeedomIP + "/core/api/jeeApi.php?apikey=" + jeedomApiKey
 
 
 def _status(state):
-    return "1" if state == 1 else "0"
+    return 1 if state == 1 else 0
 
 def _standby(state):
-    return "1" if state == 8 else "0"
+    return 1 if state == 8 else 0
 
 def parse_insight_params(params):
         """Parse the Insight parameters."""
@@ -74,7 +74,7 @@ def parse_insight_params(params):
             ontoday,  # seconds
             ontotal,  # seconds
             timeperiod,  # pylint: disable=unused-variable
-            wifipower,  # This one is always 41 for me; what is it?
+            wifipower,  
             currentmw,
             todaymw,
             totalmw
@@ -89,7 +89,7 @@ def parse_insight_params(params):
                 'wifipower' : int(wifipower),
                 'todaymw': int(float(todaymw)),
                 'totalmw': int(float(totalmw)),
-                'currentpower': str(int(float(currentmw)))}
+                'currentpower': int(float(currentmw))}
 
 
 def event(self, _type, value):
@@ -97,10 +97,11 @@ def event(self, _type, value):
     logger.info('event argument = %s',locals().keys())
     try:
         logger.info('event for device %s with type = %s value %s', self.serialnumber, _type, value)
+        logger.info("$$$$$$ $$ device = %s", json.dumps(self))
         if _type == 'BinaryState':
-            result = parse_insight_params(value)
-            data = '{"logicalAddress": "' + self.serialnumber + '", "status": ' + result['status'] + ', "standby": ' + result['standby'] + ', "currentPower": ' + result['currentpower'] +'}'
-            urllib.request.urlopen(jeedomCmd + urllib.parse.quote(data)).read()
+            params = parse_insight_params(value)
+            payload = '{"logicalAddress": "' + self.serialnumber + '", "status": ' + str(params['status']) + ', "standby": ' + str(params['standby']) + ', "currentPower": ' + str(params['currentpower']) +'}'
+            urllib.request.urlopen(callbackUrl + urllib.parse.quote(payload)).read()
     except:
         logger.info('********  bug exception raised in event for device ')
         logger.info('bug in event for device  with type = %s value %s', _type, value)
@@ -113,20 +114,21 @@ SUBSCRIPTION_REGISTRY.start()
 
 for device in devices:
     state = device.get_state(True)
+    logger.info("$$$$$$ $$ device = %s", json.dumps(device))
     logger.info('state = %s', str(state))
     serialNumber = device.serialnumber
     logger.info("serialNumber = %s", serialNumber)
-    value = '{"logicalAddress": "' + serialNumber + '", "status": ' + _status(state) + ', "standby": ' + _standby(state) + ', "currentPower": ' + str(device.current_power) +'}'
-    urllib.request.urlopen(jeedomCmd + urllib.parse.quote(value)).read()
+    payload = '{"logicalAddress": "' + serialNumber + '", "status": ' + str(_status(state)) + ', "standby": ' + str(_standby(state)) + ', "currentPower": ' + str(device.current_power) +'}'
+    urllib.request.urlopen(callbackUrl + urllib.parse.quote(payload)).read()
     SUBSCRIPTION_REGISTRY.register(device)
     SUBSCRIPTION_REGISTRY.on(device, 'BinaryState', event) 
     SUBSCRIPTION_REGISTRY.on(device, 'EnergyPerUnitCost', event)
 
 
-class jeedomRequestHandler(socketserver.BaseRequestHandler):
+class apiRequestHandler(socketserver.BaseRequestHandler):
     def __init__(self, request, client_address, server):
         # initialization.
-        self.logger = logging.getLogger('jeedomRequestHandler')
+        self.logger = logging.getLogger('apiRequestHandler')
         self.logger.debug('__init__')
         socketserver.BaseRequestHandler.__init__(self, request, client_address, server)
 
@@ -193,7 +195,7 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             
         if cmd == 'scan':
             devices = pywemo.discover_devices()
-            result = '['
+            payload = '['
             separator = ''
             for device in devices:
                 state = device.get_state(True)
@@ -208,17 +210,17 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
                 logger.info("modelName = %s", modelName)
                 model = device.model
                 logger.info("model = %s", model)
-                result += separator
-                result += json.dumps({'name': name, 'host': host, 'serialNumber': serialNumber, 'modelName': modelName, 'model': model, 'status': _status(state), 'standby': _standby(state)})
+                payload += separator
+                payload += json.dumps({'name': name, 'host': host, 'serialNumber': serialNumber, 'modelName': modelName, 'model': model, 'status': _status(state), 'standby': _standby(state)})
                 separator = ','
-            result += ']'    
+            payload += ']'    
             
             # data = '{"1":{"vendor":'+str(equipments[0][0])+'},"2":{"vendor":'+str(equipments[1][0])+'}}'
             #print("DEBUG = data =", data)
-            self.logger.debug('result scan data ->%s', result)
+            self.logger.debug(' scan data ->%s', payload)
 
             content_type = "text/javascript"
-            self.start_response('200 OK', content_type, result)
+            self.start_response('200 OK', content_type, payload)
             return
         
         if cmd == 'toggle':
@@ -227,14 +229,14 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
                 if device.serialnumber == value :
                     device.toggle()
                     device.update_insight_params()
-                    result = '{"status": '+ _status(device.get_state()) +', "standby": '+ _standby(device.get_state()) +', "currentPower": '+ str(device.current_power) +'}'
+                    payload = '{"status": '+ _status(device.get_state()) +', "standby": '+ _standby(device.get_state()) +', "currentPower": '+ str(device.current_power) +'}'
                     content_type = "text/javascript"
-                    self.start_response('200 OK', content_type, result)
+                    self.start_response('200 OK', content_type, payload)
                     return
             #pas trouvé tout à 0 
-            result = '{"status": 0, "standby": 0, "currentPower": 0}'
+            payload = '{"status": 0, "standby": 0, "currentPower": 0}'
             content_type = "text/javascript"
-            self.start_response('200 OK', content_type, result)
+            self.start_response('200 OK', content_type, payload)
             return
 
         if cmd == 'on':
@@ -242,15 +244,15 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             for device in devices:
                 if device.serialnumber == value :
                     device.on()
-                    device.update_insight_params()
-                    result = '{"status": '+ _status(device.get_state()) +', "standby": '+ _standby(device.get_state()) +', "currentPower": '+ str(device.current_power) +'}'
+                    device.get_state(True)
+                    payload = '{"status": '+ str(_status(device.get_state())) +', "standby": '+ str(_standby(device.get_state())) +'}'
                     content_type = "text/javascript"
-                    self.start_response('200 OK', content_type, result)
+                    self.start_response('200 OK', content_type, payload)
                     return
             #pas trouvé tout à 0 
-            result = '{"status": 0, "standby": 0, "currentPower": 0}'
+            payload = '{"status": 0, "standby": 0}'
             content_type = "text/javascript"
-            self.start_response('200 OK', content_type, result)
+            self.start_response('200 OK', content_type, payload)
             return
         
         if cmd == 'off':
@@ -258,29 +260,29 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             for device in devices:
                 if device.serialnumber == value :
                     device.off()
-                    device.update_insight_params()
-                    result = '{"status": '+ _status(device.get_state()) +', "standby": '+ _standby(device.get_state()) +', "currentPower": '+ str(device.current_power) +'}'
+                    device.get_state(True)
+                    payload = '{"status": '+ str(_status(device.get_state())) +', "standby": '+ str(_standby(device.get_state())) +'}'
                     content_type = "text/javascript"
-                    self.start_response('200 OK', content_type, result)
+                    self.start_response('200 OK', content_type, payload)
                     return
             #pas trouvé tout à 0 
-            result = '{"status": 0, "standby": 0, "currentPower": 0}'
+            payload = '{"status": 0, "standby": 0}'
             content_type = "text/javascript"
-            self.start_response('200 OK', content_type, result)
+            self.start_response('200 OK', content_type, payload)
             return
 
         if cmd == 'refresh':
             for device in devices:
                 if device.serialnumber == value :
                     device.update_insight_params()
-                    result = '{"status": '+ _status(device.get_state()) +', "standby": '+ _standby(device.get_state()) +', "currentPower": '+ str(device.current_power) +', "wifiPower": '+ "41" +'}'
+                    payload = '{"status": '+ _status(device.get_state()) +', "standby": '+ _standby(device.get_state()) +', "currentPower": '+ str(device.current_power) +', "wifiPower": '+ "41" +'}'
                     content_type = "text/javascript"
-                    self.start_response('200 OK', content_type, result)
+                    self.start_response('200 OK', content_type, payload)
                     return
             #pas trouvé tout à 0 
-            result = '{"status": 0, "standby": 0, "currentPower": 0}'
+            payload = '{"status": 0, "standby": 0, "currentPower": 0}'
             content_type = "text/javascript"
-            self.start_response('200 OK', content_type, result)
+            self.start_response('200 OK', content_type, payload)
             return
         
         if cmd.startswith('stop') or cmd == 'stop':
@@ -292,15 +294,15 @@ class jeedomRequestHandler(socketserver.BaseRequestHandler):
             # return end_daemon(start_response)
         
         self.logger.debug('cmd %s not yet implemented', cmd)
-        result = '{"error": cmd not implemented}'
+        payload = '{"error": cmd not implemented}'
         content_type = "text/javascript"
-        self.start_response('404 Not Found', content_type, result)
+        self.start_response('404 Not Found', content_type, payload)
         return
 
 
-class wemoServer(socketserver.TCPServer):
-    def __init__(self, server_address, handler_class=jeedomRequestHandler):
-        self.logger = logging.getLogger('wemoServer')
+class apiServer(socketserver.TCPServer):
+    def __init__(self, server_address, handler_class=apiRequestHandler):
+        self.logger = logging.getLogger('apiServer')
         self.logger.debug('__init__')
         socketserver.TCPServer.allow_reuse_address = True
         socketserver.TCPServer.__init__(self, server_address, handler_class)
@@ -310,8 +312,8 @@ class wemoServer(socketserver.TCPServer):
         return socketserver.TCPServer.server_activate(self)
 
     def serve_forever(self, poll_interval=0.5):
-        self.logger.debug('waiting for request from jeedom')
-        self.logger.info('Handling jeedom requests, press <Ctrl-C> to quit')
+        self.logger.debug('waiting for request from api')
+        self.logger.info('Handling api requests, press <Ctrl-C> to quit')
         return socketserver.TCPServer.serve_forever(self, poll_interval)
 
     def handle_request(self):
@@ -352,13 +354,12 @@ class wemoServer(socketserver.TCPServer):
 
 try:
     address = (HOST, PORT) 
-    server = wemoServer(address, jeedomRequestHandler)
+    server = apiServer(address, apiRequestHandler)
     ip, port = server.server_address 
     
-    logger.info('Server on %s:%s', ip, port)
+    logger.info('Listen on %s:%s', ip, port)
     server.serve_forever()
     logger.info('Server ended')
 except (KeyboardInterrupt, SystemExit):
     logger.info('Server ended via ctrl+C')
-    #sys.exit(0)
-    os._exit(2)
+    os._exit(0)
