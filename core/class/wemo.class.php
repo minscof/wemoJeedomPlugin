@@ -27,6 +27,7 @@ class wemo extends eqLogic
 	/*     * ***********************Methode static*************************** */
 	public static function health()
 	{
+		log::add('wemo', 'debug', 'Wemo heatlh - ');
 		$return = array();
 		$statusDaemon = false;
 		$statusDaemon = (wemo::deamon_info()['state'] == 'ok' ? true : false);
@@ -41,6 +42,7 @@ class wemo extends eqLogic
 			'advice' => ($statusDaemon) ? '' : __('Indique si la Daemon est opérationel avec sa version', __FILE__),
 			'state' => $statusDaemon
 		);
+		log::add('wemo', 'debug', 'Wemo heatlh : ' . $return['result']);
 		return $return;
 	}
 
@@ -69,6 +71,9 @@ class wemo extends eqLogic
 	}
 	public static function deamon_info()
 	{
+		$trace = debug_backtrace();
+		$trace = print_r($trace,true);
+		log::add('wemo', 'debug', 'Wemo daemon info : ' . $trace);
 		$return = array();
 		$return['log'] = 'wemo';
 		$return['state'] = 'nok';
@@ -108,7 +113,7 @@ class wemo extends eqLogic
 		log::add('wemo', 'debug', 'Nom complet du démon wemo : ' . $shell);
 		//$result = exec($shell . ' >> ' . log::getPathToLog('wemo') . ' 2>&1 &');
 		// TODO il faut lancer le serveur sur la machine Ip définie, pas uniquement en local
-		$cmd = 'nice -n 19 /usr/bin/python3 ' . $shell .' '. $url . ' ' . config::byKey('wemoPort', 'wemo', '5000') . ' ' . $logLevel;
+		$cmd = 'nice -n 19 /usr/bin/python3 ' . $shell .' '."'". $url ."'". ' ' . config::byKey('wemoPort', 'wemo', '5000') . ' ' . $logLevel;
 		log::add('wemo', 'debug', 'Cmd complète  : ' . $cmd);
 		// le sudo semble poser pbm
 		$result = exec('nohup ' . $cmd . ' >> ' . log::getPathToLog('wemo_daemon') . ' 2>&1 &');
@@ -328,7 +333,7 @@ class wemo extends eqLogic
             return;
         }
 
-        if (isset($events["scan"])) {
+        if (isset($event["scan"])) {
             $events = $event["scan"];
         } else {
             $events = '{"1":'.$event.'}';
@@ -346,17 +351,13 @@ class wemo extends eqLogic
                 if ($key == 'logicalAddress')
                     continue;
                 log::add('wemo', 'debug', '  Decoded received frame for: ' . $eqLogic->getName() . ' logicalid: ' . $eqLogic->getLogicalId() . ' - ' . $key . '=' . $value);
-                $cmd = $eqLogic->getCmd(null, $key);
-                if (is_object($cmd)) {
-                    $cmd = $this->getEqLogic()->getCmd('info', $key);
-					$value = $result->{$key};
-					if ($cmd && $cmd->getValue() != $value) {
-						$refresh = true;
-						$cmd->setValue($value);
-						$cmd->save();
-						$cmd->setCollectDate('');
-						$cmd->event($value);
-					}
+                $cmd = $eqLogic->getCmd('info', $key);
+                if ($cmd && $cmd->getValue() != $value) {
+					$refresh = true;
+					$cmd->setValue($value);
+					$cmd->save();
+					$cmd->setCollectDate('');
+					$cmd->event($value);
 				} else {
 					log::add('wemo', 'warning', 'Cmd not found for the received frame for: ' . $eqLogic->getName() . ' - ' . $key . '=' . $value);
 				}
@@ -454,15 +455,15 @@ class wemo extends eqLogic
 			$cmd->save();
 
 			if ($this->getConfiguration('modelName') == "Insight") {
-				$cmd = $this->getCmd(null, 'currentPower');
+				$cmd = $this->getCmd(null, 'currentpower');
 				if (! is_object($cmd)) {
 					$cmd = new wemoCmd();
-					$cmd->setLogicalId('currentPower');
+					$cmd->setLogicalId('currentpower');
 					$cmd->setIsVisible(1);
 				}
-				$cmd->setName(__('CurrentPower', __FILE__));
+				$cmd->setName(__('Currentpower', __FILE__));
 				$cmd->setEqLogic_id($this->getId());
-				$cmd->setConfiguration('request', 'currentPower');
+				$cmd->setConfiguration('request', 'currentpower');
 				$cmd->setType('info');
 				$cmd->setSubType('numeric');
 				$cmd->save();
@@ -498,7 +499,10 @@ class wemoCmd extends cmd
 	/*     * *********************Methode d'instance************************* */
 
 
-
+	function _isJson($string) {
+		json_decode($string);
+		return (json_last_error() == JSON_ERROR_NONE);
+	}
 
 	public function execute($_options = array())
 	{
@@ -542,43 +546,28 @@ class wemoCmd extends cmd
 		} else {
 			@$file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', 'localhost') . ':' . config::byKey('wemoPort', 'wemo', '5000') . '/' . rawurlencode($action) . '?address=' . rawurlencode($eqLogic->getLogicalId()), false, $context);
 		}
-
+		
 		if ($file === false) {
-			$result = print_r($http_response_header,true);
 			$error = error_get_last();
-			log::add('wemo', 'warning', 'Echec exécution de la commande  ' . $this->getConfiguration('request').' code ='.$result.' error='.$error);
+			log::add('wemo', 'warning', 'Echec exécution de la commande  ' . $this->getConfiguration('request') . ' error=' . $error);
 		} else {
 			log::add('wemo', 'debug', 'Exécution de la commande  ' . $this->getConfiguration('request') . ' terminée ' . $file);
 			//todo analyse result
 			$refresh = false;
-			if ( in_array($this->getConfiguration('request'),array('refresh','toggle'))) {
+			if ( $this->_isJson($file)) {
+			//if ( in_array($this->getConfiguration('request'),array('refresh','toggle'))) {
 				$result = json_decode($file);
-				$cmd = $eqLogic->getCmd('info', 'status');
-				$value = $result->{'status'};
-				if ($cmd && $cmd->getValue() != $value) {
-					$refresh = true;
-					$cmd->setValue($value);
-					$cmd->save();
-					$cmd->setCollectDate('');
-					$cmd->event($value);
-				}
-				$cmd = $eqLogic->getCmd('info', 'standby');
-				$value = $result->{'standby'};
-				if ($cmd && $cmd->getValue() != $value) {
-					$refresh = true;
-					$cmd->setValue($value);
-					$cmd->save();
-					$cmd->setCollectDate('');
-					$cmd->event($value);
-				}
-				$cmd = $eqLogic->getCmd('info', 'currentPower');
-				$value = $result->{'currentPower'};
-				if ($cmd && $cmd->getValue() != $value) {
-					$refresh = true;
-					$cmd->setValue($value);
-					$cmd->save();
-					$cmd->setCollectDate('');
-					$cmd->event($value);
+				foreach ($result as $key => $value) {
+					$cmd = $eqLogic->getCmd('info', $key);
+					if ($cmd && $cmd->getValue() != $value) {
+						$refresh = true;
+						$cmd->setValue($value);
+						$cmd->save();
+						$cmd->setCollectDate('');
+						$cmd->event($value);
+					} else {
+						log::add('wemo','debug',"key = $key no info command found, value = $value, skip key");
+					}
 				}
 			}
 			if ($refresh) $eqLogic->refreshWidget();

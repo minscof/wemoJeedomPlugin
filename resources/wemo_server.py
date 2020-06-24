@@ -86,7 +86,7 @@ def parse_insight_params(params):
                 'onfor': int(onfor),
                 'ontoday': int(ontoday),
                 'ontotal': int(ontotal),
-                'wifipower' : int(wifipower),
+                'wifiPower' : int(wifipower),
                 'todaymw': int(float(todaymw)),
                 'totalmw': int(float(totalmw)),
                 'currentpower': int(float(currentmw))}
@@ -97,21 +97,23 @@ def event(self, _type, value):
     #logger.info('event argument = %s',locals().keys())
     try:
         logger.info('event for device %s with type = %s value %s', self.serialnumber, _type, value)
-        logger.info("$$$$$$ $$ device = %s", type(self))
-        try :
-            test = json.dumps(self)
-            logger.info("$$$$$$ $$ device = %s", test)
-        except ValueError as e:
-            logger.info("json dumps error = %s", e.msg)
-
-
-        #logger.info("$$$$$$ $$ device = %s", json.dumps(self))
+        #logger.info("$$$$$$ $$ device = %s", type(self))
         if _type == 'BinaryState':
-            params = parse_insight_params(value)
-            payload = '{"logicalAddress": "' + self.serialnumber + '", "status": ' + str(params['status']) + ', "standby": ' + str(params['standby']) + ', "currentPower": ' + str(params['currentpower']) +'}'
+            params = {}
+            serialnumber = self.serialnumber
+            if self.model_name == "Insight":
+                params = self.insight_params
+                params['status'] = _status(int(params['state']))
+                params['standby'] = _standby(int(params['state']))
+                del params['state']
+            else:
+                params["status"] = self.get_state()
+            params["logicalAddress"] = serialnumber
+            payload = json.dumps(params, sort_keys=True, default=str)
+            logger.debug("json dumps payload = %s", payload)
             urllib.request.urlopen(callbackUrl + urllib.parse.quote(payload)).read()
     except:
-        logger.info('********  bug exception raised in event for device ')
+        logger.info('********  bug exception raised in event for device '+ sys.exc_info()[0])
         logger.info('bug in event for device  with type = %s value %s', _type, value)
  
 
@@ -121,16 +123,27 @@ SUBSCRIPTION_REGISTRY = pywemo.SubscriptionRegistry()
 SUBSCRIPTION_REGISTRY.start()
 
 for device in devices:
+    '''
     state = device.get_state(True)
-    #logger.info("$$$$$$ $$ device = %s", json.dumps(device))
     logger.info('state = %s', str(state))
-    serialNumber = device.serialnumber
-    logger.info("serialNumber = %s", serialNumber)
-    payload = '{"logicalAddress": "' + serialNumber + '", "status": ' + str(_status(state)) + ', "standby": ' + str(_standby(state)) + ', "currentPower": ' + str(device.current_power) +'}'
+    serialnumber = device.serialnumber
+    logger.info("serialnumber = %s", serialnumber)
+    params = {}
+    if device.model_name == "Insight":
+        params = dict(device.insight_params)
+        params['status'] = _status(int(params['state']))
+        params['standby'] = _standby(int(params['state']))
+        del params['state']
+    else:
+        params["status"] = device.get_state()
+    params["logicalAddress"] = serialnumber
+    payload = json.dumps(params, sort_keys=True, default=str)
+    logger.debug("json dumps payload = %s", payload)
     urllib.request.urlopen(callbackUrl + urllib.parse.quote(payload)).read()
+    '''
     SUBSCRIPTION_REGISTRY.register(device)
     SUBSCRIPTION_REGISTRY.on(device, 'BinaryState', event) 
-    SUBSCRIPTION_REGISTRY.on(device, 'EnergyPerUnitCost', event)
+    #SUBSCRIPTION_REGISTRY.on(device, 'EnergyPerUnitCost', event)
 
 
 class apiRequestHandler(socketserver.BaseRequestHandler):
@@ -206,25 +219,24 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
             payload = '['
             separator = ''
             for device in devices:
+                params = {}
+                params['name'] = device.name
+                logger.info("name = %s", params['name'])
+                params['host'] = device.host
+                logger.info("host = %s", params['host'])
+                params['serialNumber'] = device.serialnumber
+                logger.info("serialnumber = %s", params['serialNumber'])
+                params['modelName'] = device.model_name
+                logger.info("modelName = %s", params['modelName'])
+                params['model'] = device.model
+                logger.info("model = %s", params['model'])
                 state = device.get_state(True)
                 logger.info('state = %s', str(state))
-                serialNumber = device.serialnumber
-                logger.info("serialNumber = %s", serialNumber)
-                name = device.name
-                logger.info("name = %s", name)
-                host = device.host
-                logger.info("host = %s", host)
-                modelName = device.model_name
-                logger.info("modelName = %s", modelName)
-                model = device.model
-                logger.info("model = %s", model)
                 payload += separator
-                payload += json.dumps({'name': name, 'host': host, 'serialNumber': serialNumber, 'modelName': modelName, 'model': model, 'status': _status(state), 'standby': _standby(state)})
+                payload += json.dumps(params, sort_keys=True, default=str)
                 separator = ','
             payload += ']'    
             
-            # data = '{"1":{"vendor":'+str(equipments[0][0])+'},"2":{"vendor":'+str(equipments[1][0])+'}}'
-            #print("DEBUG = data =", data)
             self.logger.debug(' scan data ->%s', payload)
 
             content_type = "text/javascript"
@@ -236,13 +248,22 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
             for device in devices:
                 if device.serialnumber == value :
                     device.toggle()
-                    device.update_insight_params()
-                    payload = '{"status": '+ _status(device.get_state()) +', "standby": '+ _standby(device.get_state()) +', "currentPower": '+ str(device.current_power) +'}'
+                    params = {}
+                    serialnumber = device.serialnumber
+                    if device.model_name == "Insight":
+                        params = device.insight_params
+                        params['status'] = _status(int(params['state']))
+                        params['standby'] = _standby(int(params['state']))
+                        del params['state']
+                    else:
+                        params["status"] = device.get_state()
+                    params["logicalAddress"] = serialnumber
+                    payload = json.dumps(params, sort_keys=True, default=str)
                     content_type = "text/javascript"
                     self.start_response('200 OK', content_type, payload)
                     return
             #pas trouvé tout à 0 
-            payload = '{"status": 0, "standby": 0, "currentPower": 0}'
+            payload = '{"status": 0, "standby": 0}'
             content_type = "text/javascript"
             self.start_response('200 OK', content_type, payload)
             return
@@ -252,8 +273,17 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
             for device in devices:
                 if device.serialnumber == value :
                     device.on()
-                    device.get_state(True)
-                    payload = '{"status": '+ str(_status(device.get_state())) +', "standby": '+ str(_standby(device.get_state())) +'}'
+                    params = {}
+                    serialnumber = device.serialnumber
+                    if device.model_name == "Insight":
+                        params = device.insight_params
+                        params['status'] = _status(int(params['state']))
+                        params['standby'] = _standby(int(params['state']))
+                        del params['state']
+                    else:
+                        params["status"] = device.get_state()
+                    params["logicalAddress"] = serialnumber
+                    payload = json.dumps(params, sort_keys=True, default=str)
                     content_type = "text/javascript"
                     self.start_response('200 OK', content_type, payload)
                     return
@@ -268,8 +298,17 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
             for device in devices:
                 if device.serialnumber == value :
                     device.off()
-                    device.get_state(True)
-                    payload = '{"status": '+ str(_status(device.get_state())) +', "standby": '+ str(_standby(device.get_state())) +'}'
+                    params = {}
+                    serialnumber = device.serialnumber
+                    if device.model_name == "Insight":
+                        params = device.insight_params
+                        params['status'] = _status(int(params['state']))
+                        params['standby'] = _standby(int(params['state']))
+                        del params['state']
+                    else:
+                        params["status"] = device.get_state()
+                    params["logicalAddress"] = serialnumber
+                    payload = json.dumps(params, sort_keys=True, default=str)
                     content_type = "text/javascript"
                     self.start_response('200 OK', content_type, payload)
                     return
@@ -282,25 +321,32 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
         if cmd == 'refresh':
             for device in devices:
                 if device.serialnumber == value :
-                    device.update_insight_params()
-                    payload = '{"status": '+ str(_status(device.get_state())) +', "standby": '+ str(_standby(device.get_state())) +', "currentPower": '+ str(device.current_power) +', "wifiPower": '+ "41" +'}'
+                    params = {}
+                    serialnumber = device.serialnumber
+                    if device.model_name == "Insight":
+                        device.update_insight_params()
+                        params = device.insight_params
+                        params['status'] = _status(int(params['state']))
+                        params['standby'] = _standby(int(params['state']))
+                        del params['state']
+                    else:
+                        params["status"] = device.get_state(True)
+                    params["logicalAddress"] = serialnumber
+                    payload = json.dumps(params, sort_keys=True, default=str)
                     content_type = "text/javascript"
                     self.start_response('200 OK', content_type, payload)
                     return
             #pas trouvé tout à 0 
-            payload = '{"status": 0, "standby": 0, "currentPower": 0}'
+            payload = '{"status": 0, "standby": 0}'
             content_type = "text/javascript"
             self.start_response('200 OK', content_type, payload)
             return
         
         if cmd.startswith('stop') or cmd == 'stop':
             print('stop server requested')
-            #todo close socket
             server.server_close()
-            #sys.exit()
             os._exit(1)
-            # return end_daemon(start_response)
-        
+            
         if cmd == 'ping':
             content_type = "text/html"
             self.start_response('200 OK', content_type, "ping")
