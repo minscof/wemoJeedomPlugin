@@ -61,7 +61,7 @@ class wemo extends eqLogic
 	public static function dependancy_install()
 	{
 		log::remove('wemo_update');
-		if (exec('sudo pip list |grep pywemo') <> "") {
+		if (exec('sudo pip list | grep pywemo') <> "") {
 			$cmd = 'sudo /bin/bash ' . dirname(__FILE__) . '/../../resources/upgrade.sh';
 		} else {
 			$cmd = 'sudo /bin/bash ' . dirname(__FILE__) . '/../../resources/install.sh';
@@ -85,8 +85,8 @@ class wemo extends eqLogic
 			)
 		);
 		$context = stream_context_create($opts);
-		@$file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', 'localhost') . ':' . config::byKey('wemoPort', 'wemo', '5000') . '/ping', false, $context);
-		log::add('wemo', 'debug', 'Wemo daemon info ping : ' . $file);
+		//@$file = file_get_contents('http://' . config::byKey('wemoIp', 'wemo', 'localhost') . ':' . config::byKey('wemoPort', 'wemo', '5000') . '/ping', false, $context);
+		//log::add('wemo', 'debug', 'Wemo daemon info ping : ' . $file);
 		if ($result <> 0) {
 			$return['state'] = 'ok';
 		}
@@ -359,7 +359,12 @@ class wemo extends eqLogic
 					$cmd->setCollectDate('');
 					$cmd->event($value);
 				} else {
-					log::add('wemo', 'warning', 'Cmd not found for the received frame for: ' . $eqLogic->getName() . ' - ' . $key . '=' . $value);
+					if ($cmd) {
+						log::add('wemo','debug',"key = $key , value = $value, no change");
+					} else {
+						log::add('wemo','debug',"key = $key no info command found, value = $value, skip key");
+						log::add('wemo', 'warning', 'Cmd not found for the received frame for: ' . $eqLogic->getName() . ' - ' . $key . '=' . $value);
+					}
 				}
 			}
 			if ($refresh) $eqLogic->refreshWidget();
@@ -558,6 +563,7 @@ class wemoCmd extends cmd
 			//if ( in_array($this->getConfiguration('request'),array('refresh','toggle'))) {
 				$result = json_decode($file);
 				foreach ($result as $key => $value) {
+					log::add('wemo','debug',"key = $key , value = $value, analyzing...");
 					$cmd = $eqLogic->getCmd('info', $key);
 					if ($cmd && $cmd->getValue() != $value) {
 						$refresh = true;
@@ -566,7 +572,11 @@ class wemoCmd extends cmd
 						$cmd->setCollectDate('');
 						$cmd->event($value);
 					} else {
-						log::add('wemo','debug',"key = $key no info command found, value = $value, skip key");
+						if ($cmd) {
+							log::add('wemo','debug',"key = $key , value = $value, no change");
+						} else {
+							log::add('wemo','debug',"key = $key no info command found, value = $value, skip key");
+						}
 					}
 				}
 			}
