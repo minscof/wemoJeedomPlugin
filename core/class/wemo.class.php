@@ -101,7 +101,7 @@ class wemo extends eqLogic
 		$shell = realpath(dirname(__FILE__)) . '/../../resources/wemo_server.py';
 		
 		$string = file_get_contents($shell);
-		preg_match("/__version__='([0-9.]+)/mis", $string, $matches);
+		preg_match("/__version__ = '([0-9.]+)/mis", $string, $matches);
 		config::save('DaemonVer', 'Version ' . $matches[1],  'wemo');
 		$deamon_info = self::deamon_info();
 		if ($deamon_info['launchable'] != 'ok') {
@@ -138,7 +138,7 @@ class wemo extends eqLogic
 			return false;
 		}
 		message::removeAll('wemo', 'unableStartDaemon');
-		log::add('wemo', 'info', 'Démon wemo lancé version =' . $matches[1]);
+		log::add('wemo', 'info', 'Démon wemo lancé version = ' . $matches[1]);
 		return true;
 	}
 
