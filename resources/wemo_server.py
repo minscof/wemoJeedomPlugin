@@ -156,7 +156,7 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
     def __init__(self, request, client_address, server):
         # initialization.
         self.logger = logging.getLogger('apiRequestHandler')
-        self.logger.debug('__init__')
+        #self.logger.debug('__init__')
         socketserver.BaseRequestHandler.__init__(
             self, request, client_address, server)
 
@@ -177,7 +177,7 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
         return self.request.send(data.encode())
 
     def handle(self):
-        self.logger.debug('start handle()')
+        #self.logger.debug('start handle()')
         global devices
 
         data = str(self.request.recv(1024), "utf-8").split('\n')[0]
