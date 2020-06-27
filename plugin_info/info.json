@@ -1,11 +1,15 @@
 {
     "id":"wemo",
     "name":"Belkin WeMo",
+    "description":"Gestion des équipements Wemo",
+    "icon":"icon techno-plug2",
     "licence":"AGPL",
-    "author":"Thomas Martinez",
-    "installation":"Prérequis pywemo",
-    "require":"2.0",
+    "author":"Minscof",
+    "installation":"Prérequis python3 & pywemo",
+    "require":"4.0",
     "category":"automation protocol",
+    "maxDependencyInstallTime":200,
     "hasOwnDeamon":"1",
-    "hasDependency":"1"
+    "hasDependency":"1",
+    "compatibility":"python3"
 }
