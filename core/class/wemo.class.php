@@ -327,8 +327,8 @@ class wemo extends eqLogic
         log::add('wemo', 'debug', '-> Received : ' . $value);
         
         $event = json_decode($value, true);
-        // $a = print_r($event,true);
-        // log::add('wemo','debug','Dump event='.$a);
+        //$a = print_r($event,true);
+        //log::add('wemo','debug','Dump event='.$a);
         $changed = false;
         if (! isset($event["logicalAddress"]) && ! isset($event["scan"])) {
             log::add('wemo', 'warning', '  Evénement reçu sans information nommée logicalAddress ni scan. Impossible de le traiter : ' . $value);
@@ -338,18 +338,22 @@ class wemo extends eqLogic
         if (isset($event["scan"])) {
             $events = $event["scan"];
         } else {
-            $events = '{"1":'.$event.'}';
-        }
+            $events = array($event);
+		}
+		//$a = print_r($events,true);
+		//log::add('wemo', 'debug', '-> processing events : ' . $a);
         
         foreach ($events as $event) {
-
+			log::add('wemo', 'debug', '-> Received  processing event...');
             if (! $eqLogic = eqLogic::byLogicalId($event["logicalAddress"], 'wemo')) {
                 log::add('wemo', 'warning', '  Evénement reçu pour un équipement : ' . $event["logicalAddress"] . ' inexistant : abandon de l\'événement. Vérifier vos équipements Wemo');
                 continue;
             }
-			
+			$a = print_r($event,true);
+			log::add('wemo', 'debug', '-> processing event : ' . $a);
 			$refresh = false;
             foreach ($event as $key => $value) {
+				log::add('wemo', 'debug', '-> Received  key: ' . $key);
                 if ($key == 'logicalAddress')
                     continue;
                 log::add('wemo', 'debug', '  Decoded received frame for: ' . $eqLogic->getName() . ' logicalid: ' . $eqLogic->getLogicalId() . ' - ' . $key . '=' . $value);
@@ -371,6 +375,7 @@ class wemo extends eqLogic
 			}
 			if ($refresh) $eqLogic->refreshWidget();
 		}
+		log::add('wemo', 'debug', '<- End Received : ' . $value);
 	}
 
 

@@ -178,7 +178,7 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         #self.logger.debug('start handle()')
-        global devices
+        global devices, SUBSCRIPTION_REGISTRY
 
         data = str(self.request.recv(1024), "utf-8").split('\n')[0]
 
@@ -230,6 +230,8 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
             payload = '['
             separator = ''
             for device in devices:
+                SUBSCRIPTION_REGISTRY.register(device)
+                SUBSCRIPTION_REGISTRY.on(device, 'BinaryState', event)
                 params = {}
                 params['name'] = device.name
                 logger.info("name = %s", params['name'])
