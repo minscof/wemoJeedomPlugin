@@ -71,9 +71,9 @@ class wemo extends eqLogic
 	}
 	public static function deamon_info()
 	{
-		$trace = debug_backtrace();
-		$trace = print_r($trace,true);
-		log::add('wemo', 'debug', 'Wemo daemon info : ' . $trace);
+		//$trace = debug_backtrace();
+		//$trace = print_r($trace,true);
+		//log::add('wemo', 'debug', 'Wemo daemon info : ' . $trace);
 		$return = array();
 		$return['log'] = 'wemo';
 		$return['state'] = 'nok';
@@ -91,9 +91,10 @@ class wemo extends eqLogic
 			$return['state'] = 'ok';
 		}
 		$return['launchable'] = 'ok';
-		log::add('wemo', 'debug', 'Wemo daemon info : ' . $return['state']);
+		//log::add('wemo', 'debug', 'Wemo daemon info : ' . $return['state']);
 		return $return;
 	}
+
 	public static function deamon_start($_debug = false)
 	{
 		self::deamon_stop();
@@ -196,11 +197,12 @@ class wemo extends eqLogic
 		return true;
 	}
 
-
+	/*
 	public static function cronHourly()
 	{
 		self::deamon_start();
 	}
+	*/
 
 	public static function searchWemoDevices()
 	{
@@ -404,20 +406,7 @@ class wemo extends eqLogic
 			$cmd->setDisplay('generic_type', 'ENERGY_STATE');
 			$cmd->save();
 
-			$cmd = $this->getCmd(null, 'standby');
-        	if (! is_object($cmd)) {
-				$cmd = new wemoCmd();
-				$cmd->setLogicalId('standby');
-				$cmd->setIsVisible(1);
-			}
-			$cmd->setName(__('Standby', __FILE__));
-			$cmd->setEqLogic_id($this->getId());
-			$cmd->setConfiguration('request', 'standby');
-			$cmd->setType('info');
-			$cmd->setSubType('binary');
-			$cmd->setDisplay('generic_type', 'ENERGY_STATE');
-			$cmd->save();
-
+			
 			$cmd = $this->getCmd(null, 'on');
         	if (! is_object($cmd)) {
 				$cmd = new wemoCmd();
@@ -472,6 +461,112 @@ class wemo extends eqLogic
 				$cmd->setType('info');
 				$cmd->setSubType('numeric');
 				$cmd->save();
+
+				$cmd = $this->getCmd(null, 'standby');
+				if (! is_object($cmd)) {
+					$cmd = new wemoCmd();
+					$cmd->setLogicalId('standby');
+					$cmd->setIsVisible(1);
+				}
+				$cmd->setName(__('Standby', __FILE__));
+				$cmd->setEqLogic_id($this->getId());
+				$cmd->setConfiguration('request', 'standby');
+				$cmd->setType('info');
+				$cmd->setSubType('binary');
+				$cmd->setDisplay('generic_type', 'ENERGY_STATE');
+				$cmd->save();
+
+				$cmd = $this->getCmd(null, 'lastchange');
+				if (! is_object($cmd)) {
+					$cmd = new wemoCmd();
+					$cmd->setLogicalId('lastchange');
+					$cmd->setIsVisible(1);
+				}
+				$cmd->setName(__('lastchange', __FILE__));
+				$cmd->setEqLogic_id($this->getId());
+				$cmd->setConfiguration('request', 'lastchange');
+				$cmd->setType('info');
+				$cmd->setSubType('string');
+				$cmd->save();
+
+				$cmd = $this->getCmd(null, 'onfor');
+				if (! is_object($cmd)) {
+					$cmd = new wemoCmd();
+					$cmd->setLogicalId('onfor');
+					$cmd->setIsVisible(1);
+				}
+				$cmd->setName(__('onfor', __FILE__));
+				$cmd->setEqLogic_id($this->getId());
+				$cmd->setConfiguration('request', 'onfor');
+				$cmd->setType('info');
+				$cmd->setSubType('numeric');
+				$cmd->save();
+
+				$cmd = $this->getCmd(null, 'ontoday');
+				if (! is_object($cmd)) {
+					$cmd = new wemoCmd();
+					$cmd->setLogicalId('ontoday');
+					$cmd->setIsVisible(1);
+				}
+				$cmd->setName(__('ontoday', __FILE__));
+				$cmd->setEqLogic_id($this->getId());
+				$cmd->setConfiguration('request', 'ontoday');
+				$cmd->setType('info');
+				$cmd->setSubType('numeric');
+				$cmd->save();
+
+				$cmd = $this->getCmd(null, 'ontotal');
+				if (! is_object($cmd)) {
+					$cmd = new wemoCmd();
+					$cmd->setLogicalId('ontotal');
+					$cmd->setIsVisible(1);
+				}
+				$cmd->setName(__('ontotal', __FILE__));
+				$cmd->setEqLogic_id($this->getId());
+				$cmd->setConfiguration('request', 'ontotal');
+				$cmd->setType('info');
+				$cmd->setSubType('numeric');
+				$cmd->save();
+
+				$cmd = $this->getCmd(null, 'todaymw');
+				if (! is_object($cmd)) {
+					$cmd = new wemoCmd();
+					$cmd->setLogicalId('todaymw');
+					$cmd->setIsVisible(1);
+				}
+				$cmd->setName(__('todaymw', __FILE__));
+				$cmd->setEqLogic_id($this->getId());
+				$cmd->setConfiguration('request', 'todaymw');
+				$cmd->setType('info');
+				$cmd->setSubType('numeric');
+				$cmd->save();
+
+				$cmd = $this->getCmd(null, 'totalmw');
+				if (! is_object($cmd)) {
+					$cmd = new wemoCmd();
+					$cmd->setLogicalId('totalmw');
+					$cmd->setIsVisible(1);
+				}
+				$cmd->setName(__('totalmw', __FILE__));
+				$cmd->setEqLogic_id($this->getId());
+				$cmd->setConfiguration('request', 'totalmw');
+				$cmd->setType('info');
+				$cmd->setSubType('numeric');
+				$cmd->save();
+
+				$cmd = $this->getCmd(null, 'powerthreshold');
+				if (! is_object($cmd)) {
+					$cmd = new wemoCmd();
+					$cmd->setLogicalId('powerthreshold');
+					$cmd->setIsVisible(1);
+				}
+				$cmd->setName(__('powerthreshold', __FILE__));
+				$cmd->setEqLogic_id($this->getId());
+				$cmd->setConfiguration('request', 'powerthreshold');
+				$cmd->setType('info');
+				$cmd->setSubType('numeric');
+				$cmd->save();
+
 			}
 		} elseif (in_array($this->getConfiguration('modelName'), array('Motion'))) {
 			$cmd = $this->getCmd(null, 'status');

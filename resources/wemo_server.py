@@ -4,7 +4,7 @@ import os
 import sys
 import logging
 import argparse
-import subprocess
+#import subprocess
 import json
 
 import pywemo
@@ -96,7 +96,6 @@ def parse_insight_params(params):
             'totalmw': int(float(totalmw)),
             'currentpower': int(float(currentmw))}
 
-
 def event(self, _type, value):
     global logger
     #logger.info('event argument = %s',locals().keys())
@@ -120,9 +119,7 @@ def event(self, _type, value):
             urllib.request.urlopen(
                 callbackUrl + urllib.parse.quote(payload)).read()
     except:
-        logger.info(
-            '********  bug exception raised in event for device ' + sys.exc_info()[0])
-        logger.info(
+        logger.warning(
             'bug in event for device  with type = %s value %s', _type, value)
 
 
@@ -219,8 +216,8 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
                 value2 = urllib.parse.unquote(options[1].rpartition('=')[2])
 
         #print('DEBUG = cmd=', cmd, ' arg ', arg, ' key ', key, ' value ', value, ' key2 ', key2, ' value2 ', value2)
-        self.logger.debug('cmd ->%s arg=%s key=%s value=%s key2=%s value2=%s',
-                          cmd, arg, key, value, key2, value2)
+        #self.logger.debug('cmd ->%s arg=%s key=%s value=%s key2=%s value2=%s',
+        #                  cmd, arg, key, value, key2, value2)
 
         if not cmd:
             content_type = "text/html"
@@ -265,7 +262,7 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
                     params = {}
                     serialnumber = device.serialnumber
                     if device.model_name == "Insight":
-                        params = device.insight_params
+                        params = dict(device.insight_params)
                         params['status'] = _status(int(params['state']))
                         params['standby'] = _standby(int(params['state']))
                         del params['state']
@@ -290,7 +287,7 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
                     params = {}
                     serialnumber = device.serialnumber
                     if device.model_name == "Insight":
-                        params = device.insight_params
+                        params = dict(device.insight_params)
                         params['status'] = _status(int(params['state']))
                         params['standby'] = _standby(int(params['state']))
                         del params['state']
@@ -315,7 +312,7 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
                     params = {}
                     serialnumber = device.serialnumber
                     if device.model_name == "Insight":
-                        params = device.insight_params
+                        params = dict(device.insight_params)
                         params['status'] = _status(int(params['state']))
                         params['standby'] = _standby(int(params['state']))
                         del params['state']
@@ -335,11 +332,12 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
         if cmd == 'refresh':
             for device in devices:
                 if device.serialnumber == value:
+                    device.update_binary_state()
                     params = {}
                     serialnumber = device.serialnumber
                     if device.model_name == "Insight":
                         device.update_insight_params()
-                        params = device.insight_params
+                        params = dict(device.insight_params)
                         params['status'] = _status(int(params['state']))
                         params['standby'] = _standby(int(params['state']))
                         del params['state']
@@ -376,7 +374,7 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
 class apiServer(socketserver.TCPServer):
     def __init__(self, server_address, handler_class=apiRequestHandler):
         self.logger = logging.getLogger('apiServer')
-        self.logger.debug('__init__')
+        #self.logger.debug('__init__')
         socketserver.TCPServer.allow_reuse_address = True
         socketserver.TCPServer.__init__(self, server_address, handler_class)
 
