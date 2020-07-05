@@ -1,43 +1,53 @@
 #!/usr/bin/env python3
+'''wemo controller'''
 # -*- coding: utf-8 -*-
-import os
 import sys
 import logging
-import argparse
-#import subprocess
 import json
 
-import pywemo
 import urllib.request
 import urllib.error
 import urllib.parse
+from urllib.error import URLError, HTTPError
 import socketserver
 from datetime import datetime
+import pywemo
 
-__version__ = '0.93'
+__version__ = '0.94'
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)-15s - %(name)s: %(message)s')
-logger = logging.getLogger('wemo_server')
-logger.info('Program starting version %s', __version__)
+LOGGER = logging.getLogger('wemo_server')
+
+DEBUG = False
 
 reqlog = logging.getLogger("urllib3.connectionpool")
-reqlog.disabled = True
+reqlog.disabled = not DEBUG
 
-NOOP = lambda *x: None
+reqlog = logging.getLogger("pywemo.discovery")
+reqlog.disabled = not DEBUG
 
+reqlog = logging.getLogger("pywemo.subscribe")
+reqlog.disabled = not DEBUG
 
-#level = logging.DEBUG
-# if getattr(args, 'debug', False):
-#    level = logging.DEBUG
-# logging.basicConfig(level=level)
+reqlog = logging.getLogger("pywemo.ssdp")
+reqlog.disabled = not DEBUG
 
-# callbackUrl=${1}
+reqlog = logging.getLogger("pywemo.ouimeaux_device")
+reqlog.disabled = not DEBUG
+
+reqlog = logging.getLogger("pywemo.ouimeaux_device.insight")
+reqlog.disabled = not DEBUG
+
+reqlog = logging.getLogger("pywemo.ouimeaux_device.api.service")
+reqlog.disabled = not DEBUG
+
+# CALLBACK_URL=${1}
+CALLBACK_URL_SAMPLE = "http://localhost?payload="
+
 if len(sys.argv) > 1:
-    callbackUrl = sys.argv[1]
+    CALLBACK_URL = sys.argv[1]
 else:
-    callbackUrl = "http://localhost?payload="
-
-#logger.debug('callback Url %s', callbackUrl)
+    CALLBACK_URL = CALLBACK_URL_SAMPLE
 
 # listen PORT=${2}
 if len(sys.argv) > 2:
@@ -47,31 +57,36 @@ else:
     PORT = 5000
     HOST, PORT = "localhost", 5000
 
-# loglevel=${3}
+# LOGLEVEL=${3}
+LOGLEVEL = "info"
 if len(sys.argv) > 3:
-    loglevel = sys.argv[3]
-else:
-    loglevel = "info"
+    LOGLEVEL = sys.argv[3]
 
-logger.debug('loglevel %s', loglevel)
+if LOGLEVEL == "debug":
+    LOGLEVEL = logging.DEBUG
+elif LOGLEVEL == "info":
+    LOGLEVEL = logging.INFO
+elif LOGLEVEL == "warning":
+    LOGLEVEL = logging.WARNING
+elif LOGLEVEL == "error":
+    LOGLEVEL = logging.ERROR
 
-#time_start = time()
-#print('Server started at ', strftime("%a, %d %b %Y %H:%M:%S +0000", localtime(time_start)), 'listening on port ', PORT)
-#logger.info('Server started at %s listening on port %s',strftime("%a, %d %b %Y %H:%M:%S +0000", localtime(time_start)), PORT)
+LOGGER.setLevel(LOGLEVEL)
 
+LOGGER.info('Program starting version %s', __version__)
+
+LOGGER.debug('LOGLEVEL %s', LOGLEVEL)
 
 def _status(state):
     return 1 if state == 1 else 0
 
-
 def _standby(state):
     return 1 if state == 8 else 0
 
-
 def parse_insight_params(params):
     """Parse the Insight parameters."""
-    #global logger
-    #logger.debug('______parse %s',params)
+    #global LOGGER
+    #LOGGER.debug('______parse %s',params)
     (
         state,  # 0 if off, 1 if on, 8 if on but load is off
         lastchange,
@@ -96,17 +111,19 @@ def parse_insight_params(params):
             'totalmw': int(float(totalmw)),
             'currentpower': int(float(currentmw))}
 
+
 def event(self, _type, value):
-    global logger
-    #logger.info('event argument = %s',locals().keys())
+    '''processing unsollicited received event from callback'''
+    #global LOGGER
+    #LOGGER.info('event argument = %s',locals().keys())
     try:
-        logger.info('event for device %s with type = %s value %s',
-                    self.serialnumber, _type, value)
-        #logger.info("$$$$$$ $$ device = %s", type(self))
+        LOGGER.debug('event for device %s with type = %s value %s',
+                     self.serialnumber, _type, value)
         if _type == 'BinaryState':
             params = {}
             serialnumber = self.serialnumber
             if self.model_name == "Insight":
+                self.update_insight_params()
                 params = dict(self.insight_params)
                 params['status'] = _status(int(params['state']))
                 params['standby'] = _standby(int(params['state']))
@@ -115,58 +132,61 @@ def event(self, _type, value):
                 params["status"] = self.get_state()
             params["logicalAddress"] = serialnumber
             payload = json.dumps(params, sort_keys=True, default=str)
-            logger.debug("json dumps payload = %s", payload)
-            urllib.request.urlopen(
-                callbackUrl + urllib.parse.quote(payload)).read()
-    except:
-        logger.warning(
-            'bug in event for device  with type = %s value %s', _type, value)
+            LOGGER.info("event: %s", payload)
+            if CALLBACK_URL == CALLBACK_URL_SAMPLE:
+                LOGGER.warning("event notification disable - callback_url %s not completed",
+                               CALLBACK_URL)
+            else:
+                urllib.request.urlopen(
+                    CALLBACK_URL + urllib.parse.quote(payload)).read()
+    except HTTPError as error:
+        # do something
+        LOGGER.warning('HTTP error code: %s , reason: %s', error.code, error.reason)
+    except URLError as error:
+        # do something
+        LOGGER.warning('URL = %s - error: %s', CALLBACK_URL, error.reason)
+    except:  # pylint: disable=bare-except
+        LOGGER.warning(
+            'bug in event for device %s  with type = %s value %s', self.serialnumber, _type, value)
 
 
-devices = pywemo.discover_devices()
-
+DEVICES = pywemo.discover_devices()
 SUBSCRIPTION_REGISTRY = pywemo.SubscriptionRegistry()
+AUXILIARY_LIST = []
 SUBSCRIPTION_REGISTRY.start()
 
-for device in devices:
-    '''
-    state = device.get_state(True)
-    logger.info('state = %s', str(state))
-    serialnumber = device.serialnumber
-    logger.info("serialnumber = %s", serialnumber)
-    params = {}
-    if device.model_name == "Insight":
-        params = dict(device.insight_params)
-        params['status'] = _status(int(params['state']))
-        params['standby'] = _standby(int(params['state']))
-        del params['state']
+for device in DEVICES:
+    if device.serialnumber not in AUXILIARY_LIST:
+        AUXILIARY_LIST.append(device.serialnumber)
+        SUBSCRIPTION_REGISTRY.register(device)
+        SUBSCRIPTION_REGISTRY.on(device, 'BinaryState', event)
+        #SUBSCRIPTION_REGISTRY.on(device, 'EnergyPerUnitCost', event)
+        LOGGER.debug(
+            "add device %s to BinaryState event subscription", device.serialnumber)
+        print(AUXILIARY_LIST)
     else:
-        params["status"] = device.get_state()
-    params["logicalAddress"] = serialnumber
-    payload = json.dumps(params, sort_keys=True, default=str)
-    logger.debug("json dumps payload = %s", payload)
-    urllib.request.urlopen(callbackUrl + urllib.parse.quote(payload)).read()
-    '''
-    SUBSCRIPTION_REGISTRY.register(device)
-    SUBSCRIPTION_REGISTRY.on(device, 'BinaryState', event)
-    #SUBSCRIPTION_REGISTRY.on(device, 'EnergyPerUnitCost', event)
+        LOGGER.debug(
+            "device %s already added to BinaryState event subscription", device.serialnumber)
 
 
-class apiRequestHandler(socketserver.BaseRequestHandler):
-    def __init__(self, request, client_address, server):
+class ApiRequestHandler(socketserver.BaseRequestHandler):
+    '''processing received orders'''
+
+    def __init__(self, request, client_address, server1):
         # initialization.
-        self.logger = logging.getLogger('apiRequestHandler')
-        #self.logger.debug('__init__')
+        self.logger = logging.getLogger('ApiRequestHandler')
+        # self.logger.debug('__init__')
         socketserver.BaseRequestHandler.__init__(
-            self, request, client_address, server)
+            self, request, client_address, server1)
 
-    def start_response(self, code, contentType, data):
+    def start_response(self, code, content_type, data):
+        '''sending back response'''
         self.logger.debug(
             'start_response() code = %s payload = %s', code, data)
         code = "HTTP/1.1 " + code + '\r\n'
         self.request.send(code.encode())
         response_headers = {
-            'Content-Type': contentType + '; encoding=utf8',
+            'Content-Type': content_type + '; encoding=utf8',
             'Content-Length': len(data),
             'Connection': 'close',
         }
@@ -178,7 +198,7 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         #self.logger.debug('start handle()')
-        global devices, SUBSCRIPTION_REGISTRY
+        global DEVICES, SUBSCRIPTION_REGISTRY, AUXILIARY_LIST
 
         data = str(self.request.recv(1024), "utf-8").split('\n')[0]
 
@@ -203,20 +223,15 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
             arg = data[1]
 
         #self.logger.debug('arg ->%s', arg)
-        key = ''
-        value = ''
-        key2 = ''
-        value2 = ''
         if arg:
             options = arg.split('&')
-            key = options[0].rpartition('=')[0]
+            #key = options[0].rpartition('=')[0]
             value = urllib.parse.unquote(options[0].rpartition('=')[2])
-            if len(options) == 2:
-                key2 = options[1].rpartition('=')[0]
-                value2 = urllib.parse.unquote(options[1].rpartition('=')[2])
+            #if len(options) == 2:
+                #key2 = options[1].rpartition('=')[0]
+                #value2 = urllib.parse.unquote(options[1].rpartition('=')[2])
 
-        #print('DEBUG = cmd=', cmd, ' arg ', arg, ' key ', key, ' value ', value, ' key2 ', key2, ' value2 ', value2)
-        #self.logger.debug('cmd ->%s arg=%s key=%s value=%s key2=%s value2=%s',
+        # self.logger.debug('cmd ->%s arg=%s key=%s value=%s key2=%s value2=%s',
         #                  cmd, arg, key, value, key2, value2)
 
         if not cmd:
@@ -226,25 +241,36 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
             return
 
         if cmd == 'scan':
-            devices = pywemo.discover_devices()
+            DEVICES = pywemo.discover_devices()
             payload = '['
             separator = ''
-            for device in devices:
-                SUBSCRIPTION_REGISTRY.register(device)
-                SUBSCRIPTION_REGISTRY.on(device, 'BinaryState', event)
+            for device1 in DEVICES:
+                if device1.serialnumber not in AUXILIARY_LIST:
+                    AUXILIARY_LIST.append(device1.serialnumber)
+                    SUBSCRIPTION_REGISTRY.register(device1)
+                    SUBSCRIPTION_REGISTRY.on(device1, 'BinaryState', event)
+                    SUBSCRIPTION_REGISTRY.on(
+                        device1, 'EnergyPerUnitCost', event)
+                    LOGGER.debug(
+                        "add device %s to BinaryState event subscription", device1.serialnumber)
+                    print(AUXILIARY_LIST)
+                else:
+                    LOGGER.debug(
+                        "device %s already added to BinaryState event subscription",
+                        device1.serialnumber)
                 params = {}
-                params['name'] = device.name
-                logger.info("name = %s", params['name'])
-                params['host'] = device.host
-                logger.info("host = %s", params['host'])
-                params['serialNumber'] = device.serialnumber
-                logger.info("serialnumber = %s", params['serialNumber'])
-                params['modelName'] = device.model_name
-                logger.info("modelName = %s", params['modelName'])
-                params['model'] = device.model
-                logger.info("model = %s", params['model'])
-                state = device.get_state(True)
-                logger.info('state = %s', str(state))
+                params['name'] = device1.name
+                LOGGER.info("name = %s", params['name'])
+                params['host'] = device1.host
+                LOGGER.info("host = %s", params['host'])
+                params['serialNumber'] = device1.serialnumber
+                LOGGER.info("serialnumber = %s", params['serialNumber'])
+                params['modelName'] = device1.model_name
+                LOGGER.info("modelName = %s", params['modelName'])
+                params['model'] = device1.model
+                LOGGER.info("model = %s", params['model'])
+                state = device1.get_state(True)
+                LOGGER.info('state = %s', str(state))
                 payload += separator
                 payload += json.dumps(params, sort_keys=True, default=str)
                 separator = ','
@@ -258,18 +284,19 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
 
         if cmd == 'toggle':
             # key = address value = serialnumber
-            for device in devices:
-                if device.serialnumber == value:
-                    device.toggle()
+            for device1 in DEVICES:
+                if device1.serialnumber == value:
+                    device1.toggle()
                     params = {}
-                    serialnumber = device.serialnumber
-                    if device.model_name == "Insight":
-                        params = dict(device.insight_params)
+                    serialnumber = device1.serialnumber
+                    if device1.model_name == "Insight":
+                        device1.update_insight_params()
+                        params = dict(device1.insight_params)
                         params['status'] = _status(int(params['state']))
                         params['standby'] = _standby(int(params['state']))
                         del params['state']
                     else:
-                        params["status"] = device.get_state()
+                        params["status"] = device1.get_state()
                     params["logicalAddress"] = serialnumber
                     payload = json.dumps(params, sort_keys=True, default=str)
                     content_type = "text/javascript"
@@ -283,18 +310,19 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
 
         if cmd == 'on':
             # key = address value = serialnumber
-            for device in devices:
-                if device.serialnumber == value:
-                    device.on()
+            for device1 in DEVICES:
+                if device1.serialnumber == value:
+                    device1.on()
                     params = {}
-                    serialnumber = device.serialnumber
-                    if device.model_name == "Insight":
-                        params = dict(device.insight_params)
+                    serialnumber = device1.serialnumber
+                    if device1.model_name == "Insight":
+                        device1.update_insight_params()
+                        params = dict(device1.insight_params)
                         params['status'] = _status(int(params['state']))
                         params['standby'] = _standby(int(params['state']))
                         del params['state']
                     else:
-                        params["status"] = device.get_state()
+                        params["status"] = device1.get_state()
                     params["logicalAddress"] = serialnumber
                     payload = json.dumps(params, sort_keys=True, default=str)
                     content_type = "text/javascript"
@@ -308,18 +336,19 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
 
         if cmd == 'off':
             # key = address value = serialnumber
-            for device in devices:
-                if device.serialnumber == value:
-                    device.off()
+            for device1 in DEVICES:
+                if device1.serialnumber == value:
+                    device1.off()
                     params = {}
-                    serialnumber = device.serialnumber
-                    if device.model_name == "Insight":
-                        params = dict(device.insight_params)
+                    serialnumber = device1.serialnumber
+                    if device1.model_name == "Insight":
+                        device1.update_insight_params()
+                        params = dict(device1.insight_params)
                         params['status'] = _status(int(params['state']))
                         params['standby'] = _standby(int(params['state']))
                         del params['state']
                     else:
-                        params["status"] = device.get_state()
+                        params["status"] = device1.get_state()
                     params["logicalAddress"] = serialnumber
                     payload = json.dumps(params, sort_keys=True, default=str)
                     content_type = "text/javascript"
@@ -332,19 +361,19 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
             return
 
         if cmd == 'refresh':
-            for device in devices:
-                if device.serialnumber == value:
-                    device.update_binary_state()
+            for device1 in DEVICES:
+                if device1.serialnumber == value:
+                    device1.update_binary_state()
                     params = {}
-                    serialnumber = device.serialnumber
-                    if device.model_name == "Insight":
-                        device.update_insight_params()
-                        params = dict(device.insight_params)
+                    serialnumber = device1.serialnumber
+                    if device1.model_name == "Insight":
+                        device1.update_insight_params()
+                        params = dict(device1.insight_params)
                         params['status'] = _status(int(params['state']))
                         params['standby'] = _standby(int(params['state']))
                         del params['state']
                     else:
-                        params["status"] = device.get_state(True)
+                        params["status"] = device1.get_state(True)
                     params["logicalAddress"] = serialnumber
                     payload = json.dumps(params, sort_keys=True, default=str)
                     content_type = "text/javascript"
@@ -358,8 +387,10 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
 
         if cmd.startswith('stop') or cmd == 'stop':
             print('stop server requested')
+            SUBSCRIPTION_REGISTRY.stop()
             server.server_close()
-            os._exit(1)
+            server.shutdown()
+            sys.exit(1)
 
         if cmd == 'ping':
             content_type = "text/html"
@@ -373,10 +404,13 @@ class apiRequestHandler(socketserver.BaseRequestHandler):
         return
 
 
-class apiServer(socketserver.TCPServer):
-    def __init__(self, server_address, handler_class=apiRequestHandler):
-        self.logger = logging.getLogger('apiServer')
-        #self.logger.debug('__init__')
+class ApiServer(socketserver.TCPServer):
+    '''listen http request to serve'''
+
+    def __init__(self, server_address, handler_class=ApiRequestHandler):
+        self.logger = logging.getLogger('ApiServer')
+        self.logger.setLevel(LOGLEVEL)
+        # self.logger.debug('__init__')
         socketserver.TCPServer.allow_reuse_address = True
         socketserver.TCPServer.__init__(self, server_address, handler_class)
 
@@ -415,24 +449,26 @@ class apiServer(socketserver.TCPServer):
             self, request, client_address,
         )
 
-    def close_request(self, request_address):
-        #self.logger.debug('close_request(%s)', request_address)
-        return socketserver.TCPServer.close_request(
-            self, request_address,
-        )
-
     def shutdown(self):
         self.logger.debug('shutdown()')
 
 
 try:
     address = (HOST, PORT)
-    server = apiServer(address, apiRequestHandler)
+    server = ApiServer(address, ApiRequestHandler)
     ip, port = server.server_address
 
-    logger.info('Listen on %s:%s', ip, port)
+    LOGGER.info('Listen on %s:%s', ip, port)
     server.serve_forever()
-    logger.info('Server ended')
+    LOGGER.info('Server ended')
 except (KeyboardInterrupt, SystemExit):
-    logger.info('Server ended via ctrl+C')
-    os._exit(0)
+    SUBSCRIPTION_REGISTRY.stop()
+    server.server_close()
+    server.shutdown()
+    LOGGER.info('Server ended via ctrl+C')
+    sys.exit(0)
+
+if __name__ == "__main__":
+    from pprint import pprint
+
+    pprint("Wemo_server starting..")
